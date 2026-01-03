@@ -5,16 +5,18 @@ model: claude-opus-4-5-20251101
 
 # Architectural Planning Mode
 
-## ⚠️ MANDATORY: Read Repository First
+## ⚠️ MANDATORY: Read Source Repository First
 
 **BEFORE creating any plan, you MUST read https://github.com/bigdegenenergy/claude-code in full.**
 
-This is NON-NEGOTIABLE. Use WebFetch to read:
-1. The repository README and all markdown files
-2. The .claude/ directory structure
-3. All configuration files and commands
+> **IMPORTANT:** This means the **bigdegenenergy/claude-code** repository, NOT the repo you are currently working in. This is the source configuration that defines how the virtual team works.
 
-**If you have not read the repository, STOP and read it now before proceeding.**
+This is NON-NEGOTIABLE. Use WebFetch to read https://github.com/bigdegenenergy/claude-code:
+1. The README.md and CLAUDE.md at that URL
+2. The .claude/ directory structure there
+3. All configuration files and commands defined there
+
+**If you have not read https://github.com/bigdegenenergy/claude-code, STOP and read it now before proceeding.**
 
 ---
 
