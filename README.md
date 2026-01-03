@@ -17,7 +17,11 @@ This setup relies on three core pillars:
 | **QA Engineer** | `/qa` | Runs tests and fixes them in a loop until green |
 | **The Janitor** | PostToolUse Hook | Auto-formats code after every edit |
 | **Refactorer** | `/simplify` | Cleans up code without changing behavior |
-| **Code Reviewer** | `@code-reviewer` | Critical review before PR submission |
+| **Code Reviewer** | `/review` | Critical review before PR submission |
+| **Security Auditor** | `@security-auditor` | Read-only security vulnerability scanning |
+| **Frontend Specialist** | `@frontend-specialist` | UI/UX with accessibility standards |
+| **Infrastructure Eng** | `@infrastructure-engineer` | DevOps, Docker, K8s, CI/CD |
+| **Safety Net** | PreToolUse Hook | Blocks dangerous commands automatically |
 
 ## Overview
 
@@ -39,6 +43,41 @@ This repository provides a complete setup that transforms Claude Code into a mul
 - End-of-turn quality gates with testing
 - Plan-first architecture for complex features
 - Team-wide documentation and knowledge sharing
+- **Parallel agent orchestration** via git worktrees
+
+## Parallel Orchestration (Advanced)
+
+The true power of this setup comes from running **5+ Claude instances in parallel**. Instead of waiting for one agent to complete, you dispatch tasks to multiple agents and review their outputs asynchronously.
+
+### The Multi-Worktree Architecture
+
+```bash
+# Create isolated worktrees for parallel agents
+git worktree add ../agent-1 -b feature/agent-1
+git worktree add ../agent-2 -b feature/agent-2
+git worktree add ../agent-3 -b feature/agent-3
+```
+
+Each worktree is an isolated working directory that shares git history but has its own files, dependencies, and build artifacts.
+
+### The Dispatch-Review-Merge Loop
+
+| Tab | Role | Task |
+|-----|------|------|
+| 1 | Orchestrator | Planning, reviewing, merging |
+| 2 | Backend | API implementation |
+| 3 | Frontend | UI components |
+| 4 | QA | Testing and verification |
+| 5 | Infrastructure | Docker, CI/CD |
+
+**Workflow:**
+1. `/plan` in Tab 1 → Generate PLAN.md
+2. Dispatch tasks to Tabs 2-5
+3. Continue working while agents execute
+4. Notification hooks alert when agents finish
+5. Review and merge outputs in Tab 1
+
+See [docs/PARALLEL-ORCHESTRATION.md](docs/PARALLEL-ORCHESTRATION.md) for the complete guide.
 
 ## Quick Start
 
@@ -119,18 +158,23 @@ cd claude-code
 
 # Quality Assurance (QA role)
 /qa                      # Run tests, fix until green (iterative loop)
+/test-driven             # TDD workflow: red-green-refactor loop
 
-# Code Cleanup (Refactorer role)
+# Code Quality
 /simplify                # Simplify code without changing behavior
+/review                  # Senior code review (read-only, critical)
 
 # Git Operations (DevOps role)
 /ship                    # Commit, push, create PR
 /git:commit-push-pr      # Alternative git workflow
 
-# Code Review (invoke with @)
+# Specialized Agents (invoke with @)
 @code-reviewer           # Critical code review
 @code-simplifier         # Improve readability
 @verify-app              # End-to-end testing
+@security-auditor        # Security vulnerability scanning (read-only)
+@frontend-specialist     # React, TypeScript, accessibility expert
+@infrastructure-engineer # Docker, K8s, CI/CD, Terraform
 ```
 
 ## Repository Structure
@@ -141,21 +185,30 @@ cd claude-code
 │   ├── commands/              # Slash commands (virtual team roles)
 │   │   ├── plan.md            # /plan - The Architect
 │   │   ├── qa.md              # /qa - The QA Engineer
+│   │   ├── test-driven.md     # /test-driven - TDD workflow
+│   │   ├── review.md          # /review - Senior code review
 │   │   ├── simplify.md        # /simplify - The Refactorer
 │   │   ├── ship.md            # /ship - The DevOps
 │   │   └── git/
 │   │       └── commit-push-pr.md
 │   ├── agents/                # Subagents (specialized team members)
 │   │   ├── code-simplifier.md
+│   │   ├── code-reviewer.md
 │   │   ├── verify-app.md
-│   │   └── code-reviewer.md
+│   │   ├── security-auditor.md      # Security expert (read-only)
+│   │   ├── frontend-specialist.md   # React/TS/a11y expert
+│   │   └── infrastructure-engineer.md # DevOps/K8s expert
 │   ├── hooks/                 # Automated quality gates
-│   │   ├── format.py          # Python auto-formatter (PostToolUse)
+│   │   ├── safety-net.sh      # PreToolUse - blocks dangerous commands
+│   │   ├── format.py          # PostToolUse - auto-formatter
 │   │   ├── post-tool-use.sh   # Shell version (backup)
-│   │   └── stop.sh            # End-of-turn quality checks
+│   │   └── stop.sh            # Stop - end-of-turn quality checks
 │   ├── settings.json          # Permissions and hook configuration
 │   ├── docs.md                # Team knowledge base
 │   └── metrics/               # Usage tracking
+├── docs/
+│   └── PARALLEL-ORCHESTRATION.md  # Multi-agent workflow guide
+├── .mcp.json.template         # MCP server configuration template
 ├── CLAUDE.md                  # Project-specific memory for Claude
 ├── setup-claude-team.sh       # Universal setup script
 ├── RESEARCH.md                # Comprehensive research findings
