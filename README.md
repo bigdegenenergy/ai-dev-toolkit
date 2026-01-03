@@ -1,6 +1,27 @@
 # Claude Code Professional Engineering Team Setup
 
-A comprehensive, production-ready configuration for Claude Code that replicates the capabilities of a 5+ person professional software engineering team. Based on Boris Cherny's (creator of Claude Code) actual workflow and extensive research into professional engineering practices.
+A comprehensive, production-ready configuration for Claude Code that replicates the capabilities of a 5-person professional software engineering team. Based on Boris Cherny's (creator of Claude Code) actual workflow and extensive research into professional engineering practices.
+
+## The "Virtual Team" Architecture
+
+This setup relies on three core pillars:
+1. **Slash Commands** (DevOps/Architect roles) - For "inner loop" automation
+2. **Hooks** (Janitor role) - For invisible code hygiene
+3. **Subagents** (QA/Refactoring roles) - For heavy cognitive lifting
+
+| Team Role | Implemented As | Function |
+|-----------|----------------|----------|
+| **Tech Lead** | `settings.json` | Pre-approves safe tools (no permission prompts) |
+| **Architect** | `/plan` | Enforces "Think, Then Code" workflow |
+| **DevOps** | `/ship` | Automates git status, commits, pushes, PRs |
+| **QA Engineer** | `/qa` | Runs tests and fixes them in a loop until green |
+| **The Janitor** | PostToolUse Hook | Auto-formats code after every edit |
+| **Refactorer** | `/simplify` | Cleans up code without changing behavior |
+| **Code Reviewer** | `/review` | Critical review before PR submission |
+| **Security Auditor** | `@security-auditor` | Read-only security vulnerability scanning |
+| **Frontend Specialist** | `@frontend-specialist` | UI/UX with accessibility standards |
+| **Infrastructure Eng** | `@infrastructure-engineer` | DevOps, Docker, K8s, CI/CD |
+| **Safety Net** | PreToolUse Hook | Blocks dangerous commands automatically |
 
 ## Overview
 
@@ -9,23 +30,74 @@ This repository provides a complete setup that transforms Claude Code into a mul
 ### What You Get
 
 **Automated Team Roles:**
-- **Senior Developer** - Main Claude instance with Opus 4.5 for high-level coding
-- **Code Reviewer** - Critical review with security and quality checks
-- **QA Engineer** - Comprehensive end-to-end testing and verification
-- **Code Janitor** - Automatic formatting and code hygiene
-- **DevOps Engineer** - Deployment and infrastructure automation
-- **Tech Lead** - Architecture decisions and design patterns
+- **Architect** - Planning and design before implementation (`/plan`)
+- **QA Engineer** - Iterative testing until green (`/qa`)
+- **Refactorer** - Code simplification and cleanup (`/simplify`)
+- **DevOps** - Git workflow automation (`/ship`)
+- **Code Reviewer** - Critical code review (`@code-reviewer`)
+- **Code Janitor** - Automatic formatting (PostToolUse hook)
 
 **Professional Workflows:**
 - Git workflow automation (commit, push, PR creation)
-- Automated code formatting and linting
+- Automated code formatting via Python hook
 - End-of-turn quality gates with testing
-- Multi-session management for parallel work
+- Plan-first architecture for complex features
 - Team-wide documentation and knowledge sharing
+- **Parallel agent orchestration** via git worktrees
+
+## Parallel Orchestration (Advanced)
+
+The true power of this setup comes from running **5+ Claude instances in parallel**. Instead of waiting for one agent to complete, you dispatch tasks to multiple agents and review their outputs asynchronously.
+
+### The Multi-Worktree Architecture
+
+```bash
+# Create isolated worktrees for parallel agents
+git worktree add ../agent-1 -b feature/agent-1
+git worktree add ../agent-2 -b feature/agent-2
+git worktree add ../agent-3 -b feature/agent-3
+```
+
+Each worktree is an isolated working directory that shares git history but has its own files, dependencies, and build artifacts.
+
+### The Dispatch-Review-Merge Loop
+
+| Tab | Role | Task |
+|-----|------|------|
+| 1 | Orchestrator | Planning, reviewing, merging |
+| 2 | Backend | API implementation |
+| 3 | Frontend | UI components |
+| 4 | QA | Testing and verification |
+| 5 | Infrastructure | Docker, CI/CD |
+
+**Workflow:**
+1. `/plan` in Tab 1 → Generate PLAN.md
+2. Dispatch tasks to Tabs 2-5
+3. Continue working while agents execute
+4. Notification hooks alert when agents finish
+5. Review and merge outputs in Tab 1
+
+See [docs/PARALLEL-ORCHESTRATION.md](docs/PARALLEL-ORCHESTRATION.md) for the complete guide.
 
 ## Quick Start
 
-### Installation
+### Option 1: Universal Setup Script
+
+Run this script to install the virtual team configuration:
+
+```bash
+# Clone and run the setup
+git clone https://github.com/YOUR_USERNAME/claude-code.git
+cd claude-code
+
+# Install to current project
+./setup-claude-team.sh
+
+# OR install globally (applies to all projects)
+./setup-claude-team.sh --global
+```
+
+### Option 2: Manual Installation
 
 1. **Clone this repository:**
    ```bash
@@ -36,65 +108,109 @@ This repository provides a complete setup that transforms Claude Code into a mul
 2. **Copy the `.claude` directory to your project:**
    ```bash
    cp -r .claude /path/to/your/project/
+   cp CLAUDE.md /path/to/your/project/
    cd /path/to/your/project
    ```
 
 3. **Make hooks executable:**
    ```bash
    chmod +x .claude/hooks/*.sh
+   chmod +x .claude/hooks/*.py
    ```
 
 4. **Commit to your repository:**
    ```bash
-   git add .claude
-   git commit -m "feat: add Claude Code professional team setup"
+   git add .claude CLAUDE.md
+   git commit -m "feat: add Claude Code virtual team setup"
    git push
    ```
 
-5. **Start using Claude Code:**
-   ```bash
-   claude-code
+### How to Run Your New Team
+
+1. **Start Claude Code** in any repo with the `.claude` directory
+
+2. **The Architect**: "I need to add OAuth."
    ```
-
-### First Steps
-
-1. **Customize team documentation:**
-   - Edit `.claude/docs.md` with your project-specific conventions
-   - Update allowed commands in `.claude/settings.json`
-
-2. **Try the essential workflows:**
-   ```bash
-   # Start in Plan mode (shift+tab twice)
-   > I need to add user authentication
-   
-   # After implementation, use subagents
-   > @code-simplifier review my changes
-   > @verify-app test the authentication
-   > @code-reviewer check for issues
-   
-   # Commit and create PR
-   > /commit-push-pr "feat: add user authentication"
+   /plan
    ```
+   Claude maps out the files and logic without writing code.
+
+3. **The Builder**: "Plan approved. Implement it."
+   Claude writes code. The Hook immediately formats it on every save.
+
+4. **The QA**: "Verify this."
+   ```
+   /qa
+   ```
+   Claude enters a loop of running tests and fixing bugs until green.
+
+5. **The DevOps**: "Ship it."
+   ```
+   /ship
+   ```
+   Claude checks git status, adds files, writes a conventional commit, pushes, and gives you a PR link.
+
+### Essential Commands
+
+```bash
+# Planning (Architect role)
+/plan                    # Think before coding - outputs structured plan
+
+# Quality Assurance (QA role)
+/qa                      # Run tests, fix until green (iterative loop)
+/test-driven             # TDD workflow: red-green-refactor loop
+
+# Code Quality
+/simplify                # Simplify code without changing behavior
+/review                  # Senior code review (read-only, critical)
+
+# Git Operations (DevOps role)
+/ship                    # Commit, push, create PR
+/git:commit-push-pr      # Alternative git workflow
+
+# Specialized Agents (invoke with @)
+@code-reviewer           # Critical code review
+@code-simplifier         # Improve readability
+@verify-app              # End-to-end testing
+@security-auditor        # Security vulnerability scanning (read-only)
+@frontend-specialist     # React, TypeScript, accessibility expert
+@infrastructure-engineer # Docker, K8s, CI/CD, Terraform
+```
 
 ## Repository Structure
 
 ```
 .
 ├── .claude/
-│   ├── commands/              # Slash commands for workflows
-│   │   ├── git/
-│   │   │   └── commit-push-pr.md
-│   │   ├── test/
-│   │   └── deploy/
+│   ├── commands/              # Slash commands (virtual team roles)
+│   │   ├── plan.md            # /plan - The Architect
+│   │   ├── qa.md              # /qa - The QA Engineer
+│   │   ├── test-driven.md     # /test-driven - TDD workflow
+│   │   ├── review.md          # /review - Senior code review
+│   │   ├── simplify.md        # /simplify - The Refactorer
+│   │   ├── ship.md            # /ship - The DevOps
+│   │   └── git/
+│   │       └── commit-push-pr.md
 │   ├── agents/                # Subagents (specialized team members)
 │   │   ├── code-simplifier.md
+│   │   ├── code-reviewer.md
 │   │   ├── verify-app.md
-│   │   └── code-reviewer.md
+│   │   ├── security-auditor.md      # Security expert (read-only)
+│   │   ├── frontend-specialist.md   # React/TS/a11y expert
+│   │   └── infrastructure-engineer.md # DevOps/K8s expert
 │   ├── hooks/                 # Automated quality gates
-│   │   ├── post-tool-use.sh
-│   │   └── stop.sh
-│   ├── settings.json          # Team-wide configurations
-│   └── docs.md                # Team knowledge base
+│   │   ├── safety-net.sh      # PreToolUse - blocks dangerous commands
+│   │   ├── format.py          # PostToolUse - auto-formatter
+│   │   ├── post-tool-use.sh   # Shell version (backup)
+│   │   └── stop.sh            # Stop - end-of-turn quality checks
+│   ├── settings.json          # Permissions and hook configuration
+│   ├── docs.md                # Team knowledge base
+│   └── metrics/               # Usage tracking
+├── docs/
+│   └── PARALLEL-ORCHESTRATION.md  # Multi-agent workflow guide
+├── .mcp.json.template         # MCP server configuration template
+├── CLAUDE.md                  # Project-specific memory for Claude
+├── setup-claude-team.sh       # Universal setup script
 ├── RESEARCH.md                # Comprehensive research findings
 ├── IMPLEMENTATION_GUIDE.md    # Step-by-step implementation guide
 └── README.md                  # This file
@@ -102,45 +218,81 @@ This repository provides a complete setup that transforms Claude Code into a mul
 
 ## Core Components
 
-### 1. Slash Commands
+### 1. Slash Commands (The Virtual Team)
 
-Slash commands are reusable, parameterized prompts that automate repetitive "inner loop" development workflows. They are stored as Markdown files in `.claude/commands/` and shared across the team via Git.
+Slash commands implement the "virtual team" roles. Each command gives Claude a specific persona and workflow.
+
+**The Team Commands:**
+
+| Command | Role | Purpose |
+|---------|------|---------|
+| `/plan` | Architect | Think before coding. Outputs structured plan, waits for approval. |
+| `/qa` | QA Engineer | Run tests in a loop, fix issues until green. |
+| `/simplify` | Refactorer | Clean up code without changing behavior. |
+| `/ship` | DevOps | Stage, commit, push, and create PR. |
 
 **Key Features:**
 - **Pre-computed Context** - Uses inline bash (`!`command``) to inject real-time data
 - **Security Controls** - Frontmatter defines allowed tools to prevent dangerous operations
-- **Namespacing** - Organized in subdirectories (git/, test/, deploy/) for clarity
+- **Iterative Loops** - QA command keeps running until tests pass
 - **Version Control** - Committed to Git for team consistency
 
-**Example: `/commit-push-pr`**
-
-The most-used command by Boris Cherny (dozens of times daily), this automates the complete git workflow:
+**Example: `/plan` (The Architect)**
 
 ```markdown
 ---
-allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git push:*), Bash(gh pr create:*)
-argument-hint: [commit-message]
-description: Commit staged changes, push to the current branch, and create a pull request.
-model: claude-opus-4.5
+description: Enter rigorous planning mode. Do not write code yet.
+model: claude-opus-4-5-20251101
 ---
 
-## Context for Claude
-- **Current git status:** !`git status`
-- **Current branch:** !`git branch --show-current`
-- **Recent commits:** !`git log --oneline -5`
-- **Staged changes:** !`git diff --staged`
+# Architectural Planning Mode
 
-## Your Task
-1. Review the staged changes
-2. Commit with message: "$ARGUMENTS"
-3. Push to remote branch
-4. Create PR with detailed description
+You are the **Staff Architect**. The user has a request.
+
+## Planning Process
+
+### 1. Explore
+Read necessary files to map the dependency graph.
+
+### 2. Think
+Identify breaking changes, edge cases, and type implications.
+
+### 3. Spec
+Output a structured plan with:
+- User Story: What are we solving?
+- Proposed Changes: File-by-file breakdown.
+- Verification Plan: How will we test this?
+
+### 4. Wait
+**STOP and wait for user approval before writing any code.**
+```
+
+**Example: `/qa` (The QA Engineer)**
+
+```markdown
+---
+description: QA Specialist. Runs tests and fixes them in a loop until green.
+allowed-tools: Bash(*), Read(*), Edit(*), Grep(*), Glob(*)
+---
+
+## Your Mission
+
+Achieve a **green build** through iterative testing and fixing.
+
+### Phase 3: Fixing (Iterative Loop)
+If tests fail:
+1. **Analyze** the error logs carefully
+2. **Fix** the code with minimal, targeted changes
+3. **Re-run** tests to verify the fix
+4. **Repeat** until all tests pass
+
+**Your goal is GREEN. Keep going until you get there.**
 ```
 
 **Best Practices:**
 - Standardize all commands as Project Commands (`.claude/commands/`)
 - Use inline bash to pre-compute context for accuracy
-- Explicitly define allowed-tools in frontmatter for security
+- Include "be critical" and "be honest" to override agreeable behavior
 - Track command usage via hooks for continuous improvement
 
 ### 2. Subagents
@@ -179,33 +331,60 @@ Subagents are specialized AI assistants with their own system prompts, tools, an
 - Include "Use proactively" in descriptions for automatic delegation
 - Leverage separate contexts to keep main conversation focused
 
-### 3. Hooks
+### 3. Hooks (The Janitor)
 
 Hooks are callbacks that inject custom logic at various points in Claude's execution loop. They serve as automated quality gates and ensure professional code hygiene.
 
 **Available Hooks:**
 
-#### `post-tool-use.sh`
-Runs immediately after every file edit to enforce deterministic formatting:
-- Python: Black formatter + Ruff linter
-- JavaScript/TypeScript: Prettier + ESLint
-- Go: gofmt
-- Rust: rustfmt
-- Tracks tool usage metrics
+#### `format.py` (PostToolUse - The Janitor)
+A Python script that runs after every Write/Edit operation to auto-format code:
 
-#### `stop.sh`
+```python
+# Detects file type and runs the appropriate formatter:
+- JavaScript/TypeScript/Web → Prettier
+- Python → Black + isort
+- Go → gofmt
+- Rust → rustfmt
+- Ruby → rubocop
+- Shell → shfmt
+```
+
+This is the "invisible janitor" that keeps code clean without any manual intervention.
+
+#### `stop.sh` (Stop Hook - Quality Gate)
 Runs at the end of each turn as a quality gate:
 - Executes test suites (npm test, pytest, cargo test)
 - Runs type checking (TypeScript, mypy)
 - Performs linting (ESLint, ruff)
 - Conducts security scanning (bandit)
-- Logs quality metrics
+- Logs quality metrics to `.claude/metrics/`
+
+**Configuration in `settings.json`:**
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/format.py"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
 **Best Practices:**
 - Use PostToolUse for deterministic, fast operations (formatting)
 - Use Stop hooks for comprehensive verification (testing)
-- Exit with appropriate codes (0 = success, non-zero = issues found)
-- Log metrics for continuous improvement
+- Exit with code 0 to continue, non-zero to alert Claude
+- Always fail silently in PostToolUse (never block the agent)
 
 ### 4. Team Documentation
 
@@ -234,6 +413,44 @@ The `.claude/docs.md` file is a living document that serves as the team's shared
 - Use type hints for all functions
 ```
 
+## The Feedback Loop Principle
+
+**"Give Claude a way to verify its work. If Claude has that feedback loop, it will 2-3x the quality of the final result."** - Boris Cherny
+
+This is the core insight behind the entire setup. Claude should be able to check its own work through automated feedback loops:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    THE FEEDBACK LOOP                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. Claude writes code                                       │
+│         ↓                                                    │
+│  2. PostToolUse hook auto-formats (format.py)               │
+│         ↓                                                    │
+│  3. Claude completes task                                    │
+│         ↓                                                    │
+│  4. Stop hook runs tests (stop.sh)                          │
+│         ↓                                                    │
+│  ┌─────────────────────────────────────────────────┐        │
+│  │  Tests PASS → Task truly complete               │        │
+│  │  Tests FAIL → Claude notified → Fix → Repeat    │        │
+│  └─────────────────────────────────────────────────┘        │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Strict Mode
+
+For critical work, enable strict mode to block completion until tests pass:
+
+```bash
+export CLAUDE_STRICT_MODE=1
+claude
+```
+
+In strict mode, the Stop hook returns exit code 2 on test failure, blocking Claude from declaring the task complete.
+
 ## Boris Cherny's Workflow Principles
 
 Based on the creator of Claude Code's actual setup:
@@ -248,7 +465,7 @@ Press shift+tab twice to enter Plan mode. Get the plan right before switching to
 Boris runs 5 Claudes in terminal tabs and 5-10 on claude.ai/code simultaneously. Use `&` for session handoff and `--teleport` to move between terminal and web.
 
 ### 4. Verification is Mandatory
-"Give Claude a way to verify its work. If Claude has that feedback loop, it will 2-3x the quality of the final result." Every workflow should include verification.
+Every workflow should include verification. The Stop hook implements this automatically.
 
 ### 5. Pre-compute Context
 Use inline bash in slash commands to inject real-time context (git status, environment variables) before Claude processes the prompt.
