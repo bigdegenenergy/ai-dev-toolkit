@@ -4,15 +4,27 @@ This file contains team-specific knowledge, patterns, and conventions that Claud
 
 ## The Virtual Team
 
-### Quick Reference
+### Quick Reference - Commands
 
 | Role | Command | When to Use |
 |------|---------|-------------|
 | Architect | `/plan` | Before complex features |
 | QA Engineer | `/qa` | When tests need fixing |
+| TDD | `/test-driven` | Red-green-refactor loop |
+| Reviewer | `/review` | Code review (read-only) |
 | Refactorer | `/simplify` | After implementation |
 | DevOps | `/ship` | Ready to commit |
-| Reviewer | `@code-reviewer` | Before PR submission |
+
+### Quick Reference - Agents
+
+| Role | Agent | Specialty |
+|------|-------|-----------|
+| Code Reviewer | `@code-reviewer` | Critical code review |
+| QA | `@verify-app` | End-to-end testing |
+| Security | `@security-auditor` | Vulnerability scanning (read-only) |
+| Frontend | `@frontend-specialist` | React, TS, accessibility |
+| DevOps | `@infrastructure-engineer` | Docker, K8s, CI/CD |
+| Cleanup | `@code-simplifier` | Code hygiene |
 
 ### Standard Workflow
 
@@ -21,8 +33,21 @@ This file contains team-specific knowledge, patterns, and conventions that Claud
 2. [implement]     → Write the code
 3. /simplify       → Clean up
 4. /qa             → Verify tests pass
-5. @code-reviewer  → Self-review
+5. /review         → Self-review
 6. /ship           → Commit, push, PR
+```
+
+### Parallel Workflow (Advanced)
+
+```
+Tab 1: /plan        → Generate PLAN.md
+Tab 2: Backend      → Dispatch API tasks
+Tab 3: Frontend     → Dispatch UI tasks
+Tab 4: QA           → /test-driven
+Tab 5: Infra        → CI/CD tasks
+
+[Review outputs as notifications arrive]
+Tab 1: Merge all branches
 ```
 
 ## Project Overview
