@@ -23,18 +23,21 @@ This plan addresses **5 Major Gaps**, **5 Medium Gaps**, and **4 Minor Gaps** id
 - Verbose mode (`Ctrl+O`) undocumented
 
 ### Target State
-Document the full thinking spectrum with use-case guidance:
+Document the full thinking spectrum with use-case guidance.
+
+> **Note:** These triggers are **native to Claude Code CLI** (preprocessed before API calls). No implementation code is needed—only documentation.
 
 | Trigger | Budget | Use Case |
 |---------|--------|----------|
-| `think` | ~10k tokens | Refactoring, simple fixes, error handling |
-| `think hard` | ~40k tokens | Caching strategy, migration planning, API design |
-| `think harder` | ~80k tokens | Complex architecture, multi-system integration |
-| `ultrathink` | ~120k tokens | 10M+ user architecture, comprehensive security audit |
+| `think` | ~4,000 tokens | Refactoring, simple fixes, error handling |
+| `think hard` | ~10,000 tokens | Caching strategy, migration planning, API design |
+| `think harder` / `ultrathink` | ~32,000 tokens | Major architecture, comprehensive security audit |
+
+**Important:** These triggers are case-insensitive and work anywhere in the prompt. They do NOT work in claude.ai web interface or direct API calls—only Claude Code CLI.
 
 ### Implementation Tasks
 
-1. **Update CLAUDE.md**
+1. **Update CLAUDE.md** (documentation only—triggers are built-in)
    - Add "Thinking Triggers" section
    - Document when to use each level
    - Add anti-pattern: "Don't use ultrathink for everything"
@@ -96,9 +99,12 @@ For complex multi-phase tasks:
 3. Start new session: "Read `plan.md` and continue from step 3"
 
 #### Context Hygiene Rules
-- Never exceed **60%** context utilization
-- Run `/context` periodically during long sessions
-- Clear context between workflow phases
+> **Note:** The "60% rule" is a myth. Auto-compact triggers at ~95% capacity.
+
+- Run `/compact` manually at **~70% capacity** (before auto-compact kicks in)
+- Auto-compact triggers at **~95%** (not 60%)—by then you've lost control over what gets summarized
+- Run `/context` periodically during long sessions to monitor usage
+- Clear context between workflow phases with `/clear`
 - Disable unused MCP servers before compaction: `/mcp`
 
 ### Implementation Tasks
@@ -106,7 +112,7 @@ For complex multi-phase tasks:
 1. **Update CLAUDE.md**
    - Add "Session Management" section
    - Add "Context Hygiene" section
-   - Document the 60% rule
+   - Document the ~70% manual compact recommendation (NOT the debunked 60% rule)
 
 2. **Create `.claude/rules/context.md`**
    - Detailed context management strategies
@@ -141,15 +147,17 @@ Template MCP configuration with documentation for common integrations.
 
 ### High-Value MCP Integrations
 
-| Server | Use Case |
-|--------|----------|
-| **GitHub** | Issue/PR management, code review |
-| **Puppeteer** | Visual testing, screenshot workflows |
-| **Filesystem** | Enhanced file operations |
-| **PostgreSQL/MySQL** | Database queries and exploration |
-| **Sentry** | Error analysis and debugging |
-| **Figma** | Design-to-code workflows |
-| **Slack** | Team notifications |
+| Server | Use Case | Package |
+|--------|----------|---------|
+| **GitHub** | Issue/PR management, code review | `@modelcontextprotocol/server-github` |
+| **Playwright** | Visual testing, screenshot workflows | `@anthropic-ai/playwright-mcp` |
+| **Filesystem** | Enhanced file operations | `@modelcontextprotocol/server-filesystem` |
+| **PostgreSQL** | Database queries and exploration | `@modelcontextprotocol/server-postgres` |
+| **Sentry** | Error analysis and debugging | `@modelcontextprotocol/server-sentry` |
+| **Figma** | Design-to-code workflows | Community server |
+| **Slack** | Team notifications | `@modelcontextprotocol/server-slack` |
+
+> **Note:** The official `@modelcontextprotocol/server-puppeteer` is **deprecated**. Use Playwright MCP instead for browser automation.
 
 ### Implementation Tasks
 
@@ -348,7 +356,7 @@ Document both visual (design-to-code) and headless (automation) workflows.
 
 1. Provide design mock (paste, drag-drop, or file path)
 2. Ask Claude to implement
-3. Use Puppeteer MCP to screenshot result
+3. Use **Playwright MCP** to screenshot result (Puppeteer MCP is deprecated)
 4. Compare and iterate
 5. Tip: "Make it aesthetically pleasing"
 
@@ -377,7 +385,7 @@ claude -p "Fix failing test" \
 
 1. **Create `.claude/commands/visual-iterate.md`**
    - Document screenshot workflow
-   - Require Puppeteer MCP
+   - Require Playwright MCP (NOT Puppeteer—deprecated)
 
 2. **Update CLAUDE.md**
    - Add "Headless Mode" section
@@ -517,7 +525,7 @@ Before implementation, research agents should investigate:
 3. **Pillar 3**: Available MCP servers, configuration format, setup requirements
 4. **Pillar 4**: SKILL.md format specification, auto-discovery rules, skill vs command behavior
 5. **Pillar 5**: @import syntax specifics, rules/ directory behavior, instruction limits
-6. **Pillar 6**: Puppeteer MCP setup, headless mode output formats, CI/CD best practices
+6. **Pillar 6**: Playwright MCP setup (Puppeteer deprecated), headless mode output formats, CI/CD best practices
 7. **Pillar 7**: Worktree limitations, subagent parallelism limits, conflict patterns
 
 ---
