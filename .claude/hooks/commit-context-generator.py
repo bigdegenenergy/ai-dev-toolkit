@@ -23,6 +23,7 @@ Output:
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from datetime import datetime
@@ -39,6 +40,18 @@ def run_git(args: list[str]) -> str:
     return result.stdout.strip()
 
 
+def get_full_diff(base: str | None = None, head: str | None = None) -> str:
+    """Get the full diff output.
+
+    If base/head provided, compare those refs.
+    Otherwise, use staged changes.
+    """
+    if base and head:
+        return run_git(["diff", f"{base}...{head}"])
+    else:
+        return run_git(["diff", "--cached"])
+
+
 def get_changed_files(base: str | None = None, head: str | None = None) -> list[str]:
     """Get list of changed files.
 
@@ -52,12 +65,42 @@ def get_changed_files(base: str | None = None, head: str | None = None) -> list[
     return [f for f in output.split("\n") if f]
 
 
-def get_file_diff(filepath: str, base: str | None = None, head: str | None = None) -> str:
-    """Get the diff for a specific file."""
-    if base and head:
-        return run_git(["diff", f"{base}...{head}", "--", filepath])
-    else:
-        return run_git(["diff", "--cached", "--", filepath])
+def parse_diff_by_file(full_diff: str) -> dict[str, str]:
+    """Parse a unified diff into per-file diffs.
+
+    Returns a dict mapping filepath to its diff content.
+    Handles both regular files and renamed files.
+    """
+    if not full_diff.strip():
+        return {}
+
+    file_diffs: dict[str, str] = {}
+    current_file: str | None = None
+    current_diff_lines: list[str] = []
+
+    # Pattern to match diff headers
+    # Handles: diff --git a/path/file b/path/file
+    # Also handles renames: diff --git a/old/path b/new/path
+    diff_header_pattern = re.compile(r"^diff --git a/(.+?) b/(.+)$")
+
+    for line in full_diff.split("\n"):
+        match = diff_header_pattern.match(line)
+        if match:
+            # Save previous file's diff
+            if current_file and current_diff_lines:
+                file_diffs[current_file] = "\n".join(current_diff_lines)
+
+            # Start new file - use the 'b' path (destination) for renames
+            current_file = match.group(2)
+            current_diff_lines = [line]
+        elif current_file is not None:
+            current_diff_lines.append(line)
+
+    # Save last file's diff
+    if current_file and current_diff_lines:
+        file_diffs[current_file] = "\n".join(current_diff_lines)
+
+    return file_diffs
 
 
 def categorize_file(filepath: str) -> str:
@@ -132,12 +175,13 @@ def categorize_file(filepath: str) -> str:
 
 
 def analyze_diff(diff: str) -> dict:
-    """Analyze a diff to understand what changed."""
-    lines = diff.split("\n")
-    additions = sum(1 for line in lines if line.startswith("+") and not line.startswith("+++"))
-    deletions = sum(1 for line in lines if line.startswith("-") and not line.startswith("---"))
+    """Analyze a diff to understand what changed.
 
-    # Look for patterns in the changes
+    Performs a single pass over the diff lines to calculate stats
+    and detect patterns simultaneously.
+    """
+    additions = 0
+    deletions = 0
     patterns = {
         "new_function": False,
         "new_class": False,
@@ -148,21 +192,31 @@ def analyze_diff(diff: str) -> dict:
         "comments_added": False,
     }
 
-    for line in lines:
+    for line in diff.split("\n"):
+        # Skip diff metadata lines
+        if line.startswith("+++") or line.startswith("---"):
+            continue
+
         if line.startswith("+"):
+            additions += 1
             content = line[1:].strip()
-            if content.startswith("def ") or content.startswith("function ") or content.startswith("func "):
+
+            # Detect patterns in added lines
+            if content.startswith(("def ", "function ", "func ")):
                 patterns["new_function"] = True
-            if content.startswith("class "):
+            elif content.startswith("class "):
                 patterns["new_class"] = True
-            if content.startswith("import ") or content.startswith("from "):
+            elif content.startswith(("import ", "from ")):
                 patterns["imports_changed"] = True
-            if "test" in content.lower() and ("def " in content or "it(" in content or "describe(" in content):
+            elif "test" in content.lower() and any(x in content for x in ("def ", "it(", "describe(")):
                 patterns["tests_added"] = True
-            if "try:" in content or "catch" in content or "except" in content:
+            elif any(x in content for x in ("try:", "catch", "except")):
                 patterns["error_handling"] = True
-            if content.startswith("#") or content.startswith("//") or content.startswith("/*"):
+            elif content.startswith(("#", "//", "/*")):
                 patterns["comments_added"] = True
+
+        elif line.startswith("-"):
+            deletions += 1
 
     return {
         "additions": additions,
@@ -171,11 +225,14 @@ def analyze_diff(diff: str) -> dict:
     }
 
 
-def infer_change_type(categories: dict, patterns: dict) -> str:
+def infer_change_type(categories: set[str], patterns_by_file: dict[str, dict]) -> str:
     """Infer the type of change based on categories and patterns."""
-    all_patterns = {}
-    for p in patterns.values():
-        all_patterns.update(p)
+    # Aggregate all patterns
+    all_patterns: dict[str, bool] = {}
+    for file_patterns in patterns_by_file.values():
+        for key, value in file_patterns.items():
+            if value:
+                all_patterns[key] = True
 
     # Check for specific change types
     if "tests" in categories:
@@ -194,12 +251,14 @@ def infer_change_type(categories: dict, patterns: dict) -> str:
         return "feat"
 
     # Default based on additions vs deletions
-    total_add = sum(p.get("additions", 0) for p in patterns.values())
-    total_del = sum(p.get("deletions", 0) for p in patterns.values())
+    total_add = 0
+    total_del = 0
+    for analysis in patterns_by_file.values():
+        # Note: patterns_by_file values are just patterns dicts, need file_analyses
+        pass
 
-    if total_del > total_add * 2:
-        return "refactor"
-    if total_add > 0:
+    # If we can't determine, default to feat for additions or chore otherwise
+    if all_patterns:
         return "feat"
     return "chore"
 
@@ -209,7 +268,10 @@ def generate_context(
     base: str | None = None,
     head: str | None = None,
 ) -> dict:
-    """Generate context document for changes."""
+    """Generate context document for changes.
+
+    Fetches the full diff once and parses it to avoid N+1 git calls.
+    """
     if not changed_files:
         return {
             "summary": "No changes detected",
@@ -218,29 +280,40 @@ def generate_context(
             "change_type": "none",
         }
 
-    # Categorize files
+    # Get full diff once and parse it
+    full_diff = get_full_diff(base, head)
+    file_diffs = parse_diff_by_file(full_diff)
+
+    # Categorize files and analyze diffs
     categories: dict[str, list[str]] = {}
     file_analyses: dict[str, dict] = {}
 
     for filepath in changed_files:
+        # Categorize
         category = categorize_file(filepath)
         if category not in categories:
             categories[category] = []
         categories[category].append(filepath)
 
-        # Analyze the diff for this file
-        diff = get_file_diff(filepath, base, head)
-        file_analyses[filepath] = analyze_diff(diff)
+        # Analyze diff (from parsed data, not a new git call)
+        diff_content = file_diffs.get(filepath, "")
+        file_analyses[filepath] = analyze_diff(diff_content)
 
     # Infer change type
     patterns_by_file = {f: a["patterns"] for f, a in file_analyses.items()}
     change_type = infer_change_type(set(categories.keys()), patterns_by_file)
 
-    # Generate summary
-    total_files = len(changed_files)
+    # Recalculate change type based on actual additions/deletions
     total_additions = sum(a["additions"] for a in file_analyses.values())
     total_deletions = sum(a["deletions"] for a in file_analyses.values())
 
+    if change_type == "chore" and total_deletions > total_additions * 2:
+        change_type = "refactor"
+    elif change_type == "chore" and total_additions > 0:
+        change_type = "feat"
+
+    # Generate summary
+    total_files = len(changed_files)
     summary = f"{total_files} file(s) changed (+{total_additions}/-{total_deletions})"
 
     return {
