@@ -23,10 +23,34 @@ BASH_COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 
 # ============================================
+# SECURITY: Check for command chaining
+# ============================================
+
+# Function to check if command contains shell metacharacters that could chain commands
+# This prevents attacks like "npm test; rm -rf /" or "npm test && malicious"
+contains_shell_metacharacters() {
+    local cmd="$1"
+    # Check for command chaining operators: ; && || | ` $(
+    # Also check for redirection that could overwrite files: > >>
+    if [[ "$cmd" =~ [\;\&\|] ]] || \
+       [[ "$cmd" =~ \`|\$\( ]] || \
+       [[ "$cmd" =~ \>[^\&] ]]; then
+        return 0  # true - contains dangerous chars
+    fi
+    return 1  # false - safe
+}
+
+# ============================================
 # TRUSTED BASH COMMANDS - AUTO APPROVE
 # ============================================
 
 if [[ "$TOOL_NAME" == "Bash" ]] && [[ -n "$BASH_COMMAND" ]]; then
+    # SECURITY: Never auto-approve commands with shell metacharacters
+    if contains_shell_metacharacters "$BASH_COMMAND"; then
+        # Fall through to permission dialog for safety
+        exit 0
+    fi
+
     # Test commands - always safe
     if [[ "$BASH_COMMAND" =~ ^npm\ test ]] || \
        [[ "$BASH_COMMAND" =~ ^pnpm\ test ]] || \
