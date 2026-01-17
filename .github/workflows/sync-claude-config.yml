@@ -5,13 +5,41 @@
 #
 # SETUP:
 # 1. Copy this file to your repo's .github/workflows/ directory
-# 2. (Optional) Add GH_TOKEN secret with repo scope for private repos
+# 2. Add GH_TOKEN secret (Personal Access Token with 'repo' scope)
+#    - Required for private repos
+#    - Recommended for all repos: PRs created with GITHUB_TOKEN won't trigger CI
 # 3. Push to enable the workflow
 #
 # The workflow will:
 # - Run every Monday at 9:00 AM UTC
 # - Sync .claude/ directory from the source repo
 # - Create a PR if changes are detected
+#
+# IMPORTANT - CI Workflows:
+# PRs created using the default GITHUB_TOKEN do NOT trigger 'on: pull_request'
+# workflows. To ensure CI runs on sync PRs, you must:
+#   Option A: Add a GH_TOKEN secret (PAT with 'repo' scope) - RECOMMENDED
+#   Option B: Manually close and reopen the PR to trigger CI
+#   Option C: Push an empty commit to the PR branch
+#
+# SECURITY NOTE:
+# This workflow syncs executable hooks and configuration from an external repo.
+# Always review the generated PR before merging. The .github/workflows sync
+# option is disabled by default for security reasons.
+#
+# BRANCH PROTECTION (Recommended):
+# Set up branch protection on your main branch to ensure sync PRs are reviewed:
+#   1. Go to Settings > Branches > Add branch protection rule
+#   2. Branch name pattern: main (or master)
+#   3. Enable:
+#      - ✅ Require a pull request before merging
+#      - ✅ Require status checks to pass before merging
+#        - Add required checks: CI, secrets-scan, gitleaks, pii-scan
+#      - ✅ Require conversation resolution before merging
+#      - ✅ Do not allow bypassing the above settings (optional)
+#   4. Save changes
+#
+# This ensures automated sync PRs cannot be merged without review and passing CI.
 
 name: Sync Claude Config
 
@@ -22,20 +50,30 @@ on:
 
   workflow_dispatch:
     inputs:
-      sync_github_workflows:
-        description: 'Also sync .github/workflows from source repo'
+      source_repo:
+        description: 'Source repository (owner/repo)'
         required: false
-        default: 'false'
+        default: 'bigdegenenergy/claude-code'
+        type: string
+      source_branch:
+        description: 'Source branch to sync from'
+        required: false
+        default: 'main'
+        type: string
+      sync_github_workflows:
+        description: 'Also sync .github/workflows (DANGEROUS - review carefully)'
+        required: false
+        default: false
         type: boolean
       dry_run:
         description: 'Dry run - show changes without creating PR'
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 env:
-  SOURCE_REPO: bigdegenenergy/claude-code
-  SOURCE_BRANCH: main
+  SOURCE_REPO: ${{ inputs.source_repo || 'bigdegenenergy/claude-code' }}
+  SOURCE_BRANCH: ${{ inputs.source_branch || 'main' }}
 
 jobs:
   sync:
@@ -127,10 +165,13 @@ jobs:
 
           echo "changes_made=$CHANGES_MADE" >> $GITHUB_OUTPUT
 
-      - name: Sync .github/workflows (optional)
+      - name: Sync .github/workflows (optional - use with caution)
         id: sync_workflows
-        if: inputs.sync_github_workflows == 'true'
+        if: inputs.sync_github_workflows == true
         run: |
+          echo "⚠️ WARNING: Syncing workflows from external repo"
+          echo "   This can introduce CI changes - review carefully before merging!"
+          echo ""
           echo "🔄 Syncing .github/workflows/ directory..."
 
           CHANGES_MADE=false
@@ -213,7 +254,7 @@ jobs:
           fi
 
       - name: Show changes (dry run)
-        if: inputs.dry_run == 'true' && steps.changes.outputs.has_changes == 'true'
+        if: inputs.dry_run == true && steps.changes.outputs.has_changes == 'true'
         run: |
           echo "🔍 DRY RUN - Changes that would be applied:"
           echo ""
@@ -223,7 +264,7 @@ jobs:
           git diff --cached
 
       - name: Create sync branch
-        if: steps.changes.outputs.has_changes == 'true' && inputs.dry_run != 'true'
+        if: steps.changes.outputs.has_changes == 'true' && inputs.dry_run != true
         id: branch
         run: |
           BRANCH_NAME="claude-config-sync/${{ steps.version.outputs.commit_date }}-${{ steps.version.outputs.commit_sha }}"
@@ -244,13 +285,13 @@ Review the changes and merge if appropriate."
           echo "✅ Created branch: $BRANCH_NAME"
 
       - name: Push branch
-        if: steps.changes.outputs.has_changes == 'true' && inputs.dry_run != 'true'
+        if: steps.changes.outputs.has_changes == 'true' && inputs.dry_run != true
         run: |
           git push -u origin "${{ steps.branch.outputs.branch_name }}"
           echo "✅ Pushed branch to origin"
 
       - name: Create Pull Request
-        if: steps.changes.outputs.has_changes == 'true' && inputs.dry_run != 'true'
+        if: steps.changes.outputs.has_changes == 'true' && inputs.dry_run != true
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
@@ -267,7 +308,13 @@ Review the changes and merge if appropriate."
           ### Changes Synced
           - `.claude/` directory (commands, hooks, agents, skills)
           - `CLAUDE.md` (main configuration file)
-          ${{ inputs.sync_github_workflows == 'true' && '- `.github/workflows/` (CI/CD workflows)' || '' }}
+          ${{ inputs.sync_github_workflows == true && '- `.github/workflows/` (CI/CD workflows)' || '' }}
+
+          ### ⚠️ CI Note
+          If this PR was created using the default GITHUB_TOKEN, CI workflows
+          may not have triggered automatically. To run CI:
+          - Close and reopen this PR, OR
+          - Push an empty commit: \`git commit --allow-empty -m "trigger ci"\`
 
           ### Review Checklist
           - [ ] Review changes for compatibility with this project
