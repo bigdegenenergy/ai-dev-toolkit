@@ -32,9 +32,11 @@ try {
   process.exit(0);
 }
 
-const userPrompt = (promptData.prompt || promptData.user_prompt || '').toLowerCase();
+// Get the original prompt (preserve case for output)
+const originalPrompt = promptData.prompt || promptData.user_prompt || '';
+const userPromptLower = originalPrompt.toLowerCase();
 
-if (!userPrompt) {
+if (!userPromptLower) {
   process.exit(0);
 }
 
@@ -205,7 +207,7 @@ const matchedSkills = [];
 
 for (const [skillName, config] of Object.entries(skillTriggers)) {
   for (const pattern of config.patterns) {
-    if (pattern.test(userPrompt)) {
+    if (pattern.test(userPromptLower)) {
       matchedSkills.push({
         name: skillName,
         priority: config.priority
@@ -222,12 +224,13 @@ matchedSkills.sort((a, b) => a.priority - b.priority);
 const activeSkills = matchedSkills.slice(0, 2);
 
 if (activeSkills.length === 0) {
+  // No skills matched - pass through original prompt unchanged
   process.exit(0);
 }
 
 // Load skill content
 const skillsDir = join(__dirname, '..', '..', 'skills');
-let output = '';
+let skillContext = '';
 
 for (const skill of activeSkills) {
   const skillPath = join(skillsDir, skill.name, 'SKILL.md');
@@ -237,16 +240,25 @@ for (const skill of activeSkills) {
       const content = readFileSync(skillPath, 'utf-8');
       // Remove frontmatter
       const cleanContent = content.replace(/^---[\s\S]*?---\n*/, '');
-      output += `\n## Activated Skill: ${skill.name}\n`;
-      output += cleanContent + '\n';
+      skillContext += `\n## Activated Skill: ${skill.name}\n`;
+      skillContext += cleanContent + '\n';
     } catch (e) {
       // Silently skip unreadable skills
     }
   }
 }
 
-if (output) {
-  console.log('\n--- SKILL CONTEXT (Auto-activated based on your prompt) ---');
-  console.log(output);
-  console.log('--- END SKILL CONTEXT ---\n');
+// CRITICAL: Output the original prompt first, then append skill context
+// UserPromptSubmit hooks replace the user's input, so we must preserve it
+if (skillContext) {
+  // Output original prompt first (this is what the user actually asked)
+  console.log(originalPrompt);
+  console.log('');
+  console.log('<skill-context>');
+  console.log('The following skill context was auto-activated based on your prompt:');
+  console.log(skillContext);
+  console.log('</skill-context>');
+} else {
+  // No skill content loaded - just pass through
+  process.exit(0);
 }
