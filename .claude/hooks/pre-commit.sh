@@ -191,6 +191,60 @@ if [ -n "$SH_FILES" ]; then
 fi
 
 # ============================================
+# YAML SYNTAX VALIDATION
+# ============================================
+
+echo ""
+echo "📄 Validating YAML syntax..."
+
+YAML_FILES=$(echo "$STAGED_FILES" | grep -E '\.(yml|yaml)$' || true)
+if [ -n "$YAML_FILES" ]; then
+    # Check if PyYAML is available
+    if ! python3 -c "import yaml" 2>/dev/null; then
+        echo "  ⚠️  PyYAML not installed - YAML validation skipped"
+        echo "     Install with: pip install pyyaml"
+    else
+        # Batch all YAML files into single Python invocation for performance
+        # Pass filenames via stdin to avoid command-line length limits and injection
+        YAML_OUTPUT=$(echo "$YAML_FILES" | python3 << 'PYEOF'
+import sys
+import yaml
+
+errors = []
+for line in sys.stdin:
+    filepath = line.strip()
+    if not filepath:
+        continue
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        errors.append(f"{filepath}: {e}")
+    except Exception as e:
+        errors.append(f"{filepath}: {e}")
+
+if errors:
+    for err in errors:
+        print(err)
+    sys.exit(1)
+sys.exit(0)
+PYEOF
+)
+        YAML_RESULT=$?
+
+        if [ $YAML_RESULT -ne 0 ]; then
+            echo "  ⛔ YAML syntax errors detected:"
+            echo "$YAML_OUTPUT" | sed 's/^/     /'
+            EXIT_CODE=2
+        else
+            echo "  ✓ All YAML files valid"
+        fi
+    fi
+else
+    echo "  ℹ️  No YAML files in commit"
+fi
+
+# ============================================
 # SECURITY CHECKS
 # ============================================
 
