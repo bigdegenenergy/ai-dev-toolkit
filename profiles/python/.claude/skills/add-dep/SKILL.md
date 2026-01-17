@@ -51,24 +51,31 @@ pip show PACKAGE_NAME | grep Version
 
 ### Step 4: Pin to requirements.txt
 
-Add the exact installed version to `requirements.txt`:
+Add the exact installed version to `requirements.txt` with duplicate checking:
 
 ```bash
-# Get the version and append to requirements.txt
-VERSION=$(pip show PACKAGE_NAME | grep Version | cut -d' ' -f2)
-echo "PACKAGE_NAME==$VERSION" >> requirements.txt
+# Get the exact version using pip show (not grep which can match partial names)
+VERSION=$(pip show PACKAGE_NAME | grep "^Version:" | cut -d' ' -f2)
+
+# Check if package already exists in requirements.txt (exact match)
+if grep -q "^PACKAGE_NAME==" requirements.txt 2>/dev/null; then
+    # Update existing entry
+    sed -i "s/^PACKAGE_NAME==.*/PACKAGE_NAME==$VERSION/" requirements.txt
+    echo "Updated PACKAGE_NAME==$VERSION in requirements.txt"
+else
+    # Add new entry
+    echo "PACKAGE_NAME==$VERSION" >> requirements.txt
+    echo "Added PACKAGE_NAME==$VERSION to requirements.txt"
+fi
 ```
 
-Or use pip freeze for the package:
-
-```bash
-pip freeze | grep -i PACKAGE_NAME >> requirements.txt
-```
+**Important**: Do NOT use `pip freeze | grep -i PACKAGE_NAME` as it can match partial names (e.g., `requests` matching `requests-oauthlib`).
 
 ### Step 5: Verify requirements.txt
 
 ```bash
-cat requirements.txt | grep PACKAGE_NAME
+# Use exact match to verify
+grep "^PACKAGE_NAME==" requirements.txt
 ```
 
 ## Common Package Mappings
@@ -93,11 +100,14 @@ pip install --no-input requests
 # 2. Verify
 python -c "import requests; print(requests.__version__)"
 
-# 3. Pin
-pip freeze | grep -i requests >> requirements.txt
+# 3. Pin (with duplicate check)
+VERSION=$(pip show requests | grep "^Version:" | cut -d' ' -f2)
+if ! grep -q "^requests==" requirements.txt 2>/dev/null; then
+    echo "requests==$VERSION" >> requirements.txt
+fi
 
 # 4. Confirm
-cat requirements.txt | tail -1
+grep "^requests==" requirements.txt
 ```
 
 Output:
@@ -126,7 +136,10 @@ For development-only dependencies (testing, linting), add to `requirements-dev.t
 
 ```bash
 pip install --no-input pytest
-pip freeze | grep -i pytest >> requirements-dev.txt
+VERSION=$(pip show pytest | grep "^Version:" | cut -d' ' -f2)
+if ! grep -q "^pytest==" requirements-dev.txt 2>/dev/null; then
+    echo "pytest==$VERSION" >> requirements-dev.txt
+fi
 ```
 
 ## Handling Failures
