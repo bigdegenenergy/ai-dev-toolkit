@@ -51,16 +51,18 @@ pip show PACKAGE_NAME | grep Version
 
 ### Step 4: Pin to requirements.txt
 
-Add the exact installed version to `requirements.txt` with duplicate checking:
+Add the exact installed version to `requirements.txt` with robust duplicate checking:
 
 ```bash
 # Get the exact version using pip show (not grep which can match partial names)
 VERSION=$(pip show PACKAGE_NAME | grep "^Version:" | cut -d' ' -f2)
 
-# Check if package already exists in requirements.txt (exact match)
-if grep -q "^PACKAGE_NAME==" requirements.txt 2>/dev/null; then
-    # Update existing entry
-    sed -i "s/^PACKAGE_NAME==.*/PACKAGE_NAME==$VERSION/" requirements.txt
+# Check if package already exists (case-insensitive, any version specifier)
+# Matches: package==1.0, package>=1.0, package~=1.0, Package==1.0, etc.
+if grep -iq "^PACKAGE_NAME[<>=!~\[]" requirements.txt 2>/dev/null || grep -iq "^PACKAGE_NAME$" requirements.txt 2>/dev/null; then
+    # Update existing entry (case-insensitive replacement)
+    sed -i "s/^[Pp][Aa][Cc][Kk][Aa][Gg][Ee]_[Nn][Aa][Mm][Ee][<>=!~\[].*/PACKAGE_NAME==$VERSION/I" requirements.txt
+    sed -i "s/^[Pp][Aa][Cc][Kk][Aa][Gg][Ee]_[Nn][Aa][Mm][Ee]$/PACKAGE_NAME==$VERSION/I" requirements.txt
     echo "Updated PACKAGE_NAME==$VERSION in requirements.txt"
 else
     # Add new entry
@@ -69,13 +71,18 @@ else
 fi
 ```
 
-**Important**: Do NOT use `pip freeze | grep -i PACKAGE_NAME` as it can match partial names (e.g., `requests` matching `requests-oauthlib`).
+**Important Notes**:
+
+- Uses case-insensitive matching (`-i` flag) to catch `Requests` vs `requests`
+- Detects any version specifier: `==`, `>=`, `<=`, `~=`, `!=`, `[extras]`
+- Also catches bare package names without version specifiers
+- Do NOT use `pip freeze | grep` as it can match partial names (e.g., `requests` matching `requests-oauthlib`)
 
 ### Step 5: Verify requirements.txt
 
 ```bash
-# Use exact match to verify
-grep "^PACKAGE_NAME==" requirements.txt
+# Use case-insensitive match to verify
+grep -i "^PACKAGE_NAME" requirements.txt
 ```
 
 ## Common Package Mappings
@@ -100,9 +107,9 @@ pip install --no-input requests
 # 2. Verify
 python -c "import requests; print(requests.__version__)"
 
-# 3. Pin (with duplicate check)
+# 3. Pin (with case-insensitive duplicate check)
 VERSION=$(pip show requests | grep "^Version:" | cut -d' ' -f2)
-if ! grep -q "^requests==" requirements.txt 2>/dev/null; then
+if ! grep -iq "^requests[<>=!~\[]" requirements.txt 2>/dev/null; then
     echo "requests==$VERSION" >> requirements.txt
 fi
 
@@ -137,7 +144,7 @@ For development-only dependencies (testing, linting), add to `requirements-dev.t
 ```bash
 pip install --no-input pytest
 VERSION=$(pip show pytest | grep "^Version:" | cut -d' ' -f2)
-if ! grep -q "^pytest==" requirements-dev.txt 2>/dev/null; then
+if ! grep -iq "^pytest[<>=!~\[]" requirements-dev.txt 2>/dev/null; then
     echo "pytest==$VERSION" >> requirements-dev.txt
 fi
 ```
