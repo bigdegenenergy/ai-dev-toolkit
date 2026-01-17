@@ -60,12 +60,11 @@ If you are performing this manually, you must copy **two** distinct directories:
 
     cp -r /tmp/claude-dna/.github ./.github
 
-    # 4. Set Executable Permissions
+    # 4. Set Executable Permissions (see setup-claude-team.sh for the exact command)
 
-    chmod +x .claude/hooks/_.sh
-    chmod +x .claude/hooks/_.py
+    # Sets .sh and .py files in .claude/hooks/ as executable
 
-    # 5. Clean Up
+    # 5. Cleanup
 
     rm -rf /tmp/claude-dna
 
