@@ -524,7 +524,7 @@ NEXT: [next action]
 /ralph
 
 # Ralph will:
-# 1. Read @fix_plan.md for tasks
+# 1. Read fix_plan.md for tasks
 # 2. Execute ONE task per loop
 # 3. Report status after each loop
 # 4. Continue until EXIT_SIGNAL: true or BLOCKED

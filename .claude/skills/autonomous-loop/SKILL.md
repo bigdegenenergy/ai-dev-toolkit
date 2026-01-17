@@ -35,14 +35,13 @@ Halt execution when detecting stagnation:
 ## Status Report
 
 STATUS: IN_PROGRESS | COMPLETE | BLOCKED
-LOOP: [current]/[max expected]
+LOOP: [N]
 EXIT_SIGNAL: false | true
-TASKS_COMPLETED_THIS_LOOP: [list]
-FILES_MODIFIED: [list]
-TESTS_STATUS: [pass/fail count]
-ERRORS_THIS_LOOP: [count]
-WORK_TYPE: implementation | testing | documentation | debugging
-RECOMMENDATION: [one-line next step]
+TASKS_COMPLETED: [what you finished]
+FILES_MODIFIED: [list of changed files]
+TESTS: [X/Y passing]
+ERRORS: [count or "none"]
+NEXT: [what comes next or "done"]
 ```
 
 ## Exit Signal Rules
@@ -109,7 +108,7 @@ Track these signals to detect completion:
 
 ## Integration with Fix Plan
 
-Maintain a `@fix_plan.md` file tracking:
+Maintain a `fix_plan.md` file tracking:
 
 - [ ] High priority items first
 - [ ] Medium priority items
