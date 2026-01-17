@@ -1,6 +1,5 @@
 ---
 description: Autonomous development loop. Iteratively improves until completion with built-in safeguards.
-model: claude-opus-4-5-20251101
 allowed-tools: Bash(*), Read(*), Edit(*), Write(*), Grep(*), Glob(*), Task(*)
 ---
 
@@ -16,7 +15,7 @@ Iteratively develop until ALL tasks are complete with ALL tests passing.
 
 - **Git Status:** !`git status -sb`
 - **Recent Changes:** !`git log --oneline -5 2>/dev/null || echo "No commits yet"`
-- **Fix Plan:** !`cat @fix_plan.md 2>/dev/null || echo "No @fix_plan.md found - create one if needed"`
+- **Fix Plan:** !`cat fix_plan.md 2>/dev/null || echo "No fix_plan.md found - create one if needed"`
 - **Test Status:** !`npm test 2>&1 | tail -5 || pytest --tb=no -q 2>&1 | tail -5 || echo "Run tests to discover status"`
 
 ## Autonomous Loop Protocol
@@ -26,8 +25,8 @@ Iteratively develop until ALL tasks are complete with ALL tests passing.
 Check for project-specific guidance:
 
 - `PROMPT.md` - Development instructions
-- `@fix_plan.md` - Prioritized task list
-- `@AGENT.md` - Build/run specifications
+- `fix_plan.md` - Prioritized task list
+- `AGENT.md` - Build/run specifications
 
 ### 2. Execute ONE Task Per Loop
 
@@ -68,7 +67,7 @@ NEXT: [what comes next or "done"]
 
 Set `EXIT_SIGNAL: true` ONLY when ALL are true:
 
-1. All `@fix_plan.md` items are marked complete (or no fix plan exists and task is done)
+1. All `fix_plan.md` items are marked complete (or no fix plan exists and task is done)
 2. All tests are passing
 3. No execution errors
 4. All requirements implemented
@@ -87,7 +86,7 @@ Set `EXIT_SIGNAL: true` ONLY when ALL are true:
 
 - **Search before assuming** - Check if something exists before creating it
 - **Minimal changes** - Smallest fix that solves the problem
-- **Track everything** - Update @fix_plan.md as you work
+- **Track everything** - Update fix_plan.md as you work
 - **Be honest** - Report blockers clearly, don't spin wheels
 - **One task focus** - Complete one thing before starting another
 
@@ -128,7 +127,7 @@ Loop 3:
 
 ## Begin
 
-1. Check for `@fix_plan.md` or create one from the task
+1. Check for `fix_plan.md` or create one from the task
 2. Start with the highest priority item
 3. Execute, test, report
 4. Loop until EXIT_SIGNAL: true or BLOCKED
