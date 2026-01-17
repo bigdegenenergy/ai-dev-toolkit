@@ -376,6 +376,7 @@ The pre-commit hook automatically runs before any `git commit` command to ensure
 - Go: staticcheck or golint
 - Rust: Clippy
 - Shell scripts: ShellCheck
+- YAML files: Python yaml.safe_load validation
 
 **Formatting:**
 

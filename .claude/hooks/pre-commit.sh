@@ -191,6 +191,46 @@ if [ -n "$SH_FILES" ]; then
 fi
 
 # ============================================
+# YAML SYNTAX VALIDATION
+# ============================================
+
+echo ""
+echo "📄 Validating YAML syntax..."
+
+YAML_FILES=$(echo "$STAGED_FILES" | grep -E '\.(yml|yaml)$' || true)
+if [ -n "$YAML_FILES" ]; then
+    YAML_ERRORS=""
+    for file in $YAML_FILES; do
+        if [ -f "$file" ]; then
+            # Use Python's yaml module for validation
+            YAML_CHECK=$(python3 -c "
+import yaml
+import sys
+try:
+    with open('$file', 'r') as f:
+        yaml.safe_load(f)
+    sys.exit(0)
+except yaml.YAMLError as e:
+    print(f'$file: {e}')
+    sys.exit(1)
+" 2>&1) || {
+                YAML_ERRORS="${YAML_ERRORS}${YAML_CHECK}\n"
+                EXIT_CODE=2
+            }
+        fi
+    done
+
+    if [ -n "$YAML_ERRORS" ]; then
+        echo "  ⛔ YAML syntax errors found:"
+        echo -e "$YAML_ERRORS" | sed 's/^/     /'
+    else
+        echo "  ✓ All YAML files valid"
+    fi
+else
+    echo "  ℹ️  No YAML files in commit"
+fi
+
+# ============================================
 # SECURITY CHECKS
 # ============================================
 
