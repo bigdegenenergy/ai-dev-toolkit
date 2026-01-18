@@ -14,7 +14,7 @@ We take the security of this project seriously. If you believe you have found a 
 
 ### Please Do
 
-- **Report vulnerabilities privately** by emailing **[INSERT SECURITY EMAIL]** or by using [GitHub's private vulnerability reporting](https://github.com/bigdegenenergy/ai-dev-toolkit/security/advisories/new).
+- **Report vulnerabilities privately** by emailing [@bigdegenenergyx on X](https://x.com/bigdegenenergyx) or by using [GitHub's private vulnerability reporting](https://github.com/bigdegenenergy/ai-dev-toolkit/security/advisories/new).
 - Provide sufficient information to reproduce the issue, so we can resolve it quickly.
 - Allow reasonable time for us to address the issue before any public disclosure.
 
@@ -67,7 +67,7 @@ This repository includes security-focused tooling:
 
 ## Contact
 
-For security concerns, please contact: **[INSERT SECURITY CONTACT]**
+For security concerns, please contact: [@bigdegenenergyx on X](https://x.com/bigdegenenergyx)
 
 For general questions about this security policy, you can open a discussion in the repository.
 
