@@ -1,9 +1,11 @@
 #!/bin/bash
 # init-repo.sh
-# Universal Claude Code Setup Initializer
+# Universal Claude Code Setup Initializer (v3.0)
 #
 # This script initializes a repository with Claude Code's virtual team setup.
 # It can copy from a template directory or generate fresh configs.
+#
+# Features: 18 agents, 11 skills, 22 commands, 8 hooks
 #
 # Usage:
 #   ./init-repo.sh                    # Initialize current directory
@@ -35,7 +37,7 @@ fi
 TARGET_DIR=$(cd "$TARGET_DIR" && pwd)
 
 echo -e "${BLUE}═══════════════════════════════════════════${NC}"
-echo -e "${BLUE}  Claude Code Virtual Team Initializer${NC}"
+echo -e "${BLUE}  Claude Code Virtual Team Initializer v3.0${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════${NC}"
 echo ""
 echo -e "Target: ${GREEN}$TARGET_DIR${NC}"
@@ -56,7 +58,10 @@ echo ""
 echo "Creating directory structure..."
 mkdir -p "$TARGET_DIR/.claude/commands"
 mkdir -p "$TARGET_DIR/.claude/agents"
+mkdir -p "$TARGET_DIR/.claude/skills"
 mkdir -p "$TARGET_DIR/.claude/hooks"
+mkdir -p "$TARGET_DIR/.claude/templates"
+mkdir -p "$TARGET_DIR/.claude/artifacts"
 mkdir -p "$TARGET_DIR/.claude/metrics"
 
 # Check for global template
@@ -76,10 +81,22 @@ if [ "$USE_GLOBAL" = true ] && [ -d "$GLOBAL_CLAUDE" ]; then
         echo "  ✅ Copied agents"
     fi
 
+    # Copy skills
+    if [ -d "$GLOBAL_CLAUDE/skills" ]; then
+        cp -r "$GLOBAL_CLAUDE/skills/"* "$TARGET_DIR/.claude/skills/" 2>/dev/null || true
+        echo "  ✅ Copied skills"
+    fi
+
     # Copy hooks
     if [ -d "$GLOBAL_CLAUDE/hooks" ]; then
         cp -r "$GLOBAL_CLAUDE/hooks/"* "$TARGET_DIR/.claude/hooks/" 2>/dev/null || true
         echo "  ✅ Copied hooks"
+    fi
+
+    # Copy templates
+    if [ -d "$GLOBAL_CLAUDE/templates" ]; then
+        cp -r "$GLOBAL_CLAUDE/templates/"* "$TARGET_DIR/.claude/templates/" 2>/dev/null || true
+        echo "  ✅ Copied templates"
     fi
 
     # Copy settings (as template)
@@ -92,6 +109,12 @@ if [ "$USE_GLOBAL" = true ] && [ -d "$GLOBAL_CLAUDE" ]; then
     if [ -f "$GLOBAL_CLAUDE/docs.md" ]; then
         cp "$GLOBAL_CLAUDE/docs.md" "$TARGET_DIR/.claude/docs.md"
         echo "  ✅ Copied docs.md"
+    fi
+
+    # Copy notifications template if exists
+    if [ -f "$GLOBAL_CLAUDE/notifications.json.template" ]; then
+        cp "$GLOBAL_CLAUDE/notifications.json.template" "$TARGET_DIR/.claude/notifications.json.template"
+        echo "  ✅ Copied notifications.json.template"
     fi
 else
     echo -e "${YELLOW}No global template found. Run setup-claude-team.sh --global first.${NC}"
@@ -201,24 +224,39 @@ if [ -f "$GITIGNORE" ]; then
         echo "" >> "$GITIGNORE"
         echo "# Claude Code" >> "$GITIGNORE"
         echo ".claude/metrics/" >> "$GITIGNORE"
+        echo ".claude/artifacts/" >> "$GITIGNORE"
         echo ".claude/settings.local.json" >> "$GITIGNORE"
+        echo ".claude/notifications.json" >> "$GITIGNORE"
         echo "  ✅ Updated .gitignore"
     fi
+else
+    # Create .gitignore with Claude Code entries
+    cat > "$GITIGNORE" << 'EOF'
+# Claude Code
+.claude/metrics/
+.claude/artifacts/
+.claude/settings.local.json
+.claude/notifications.json
+EOF
+    echo "  ✅ Created .gitignore"
 fi
 
 # Summary
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
-echo -e "${GREEN}  Setup Complete!${NC}"
+echo -e "${GREEN}  Setup Complete! (v3.0)${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════${NC}"
 echo ""
 echo "Directory structure:"
 echo "  $TARGET_DIR/"
 echo "  ├── .claude/"
-echo "  │   ├── commands/    (slash commands)"
-echo "  │   ├── agents/      (subagents)"
-echo "  │   ├── hooks/       (automation)"
-echo "  │   ├── metrics/     (tracking)"
+echo "  │   ├── commands/    (22 slash commands)"
+echo "  │   ├── agents/      (18 specialized agents)"
+echo "  │   ├── skills/      (11 auto-discovered skills)"
+echo "  │   ├── hooks/       (8 automated hooks)"
+echo "  │   ├── templates/   (project templates)"
+echo "  │   ├── artifacts/   (gitignored, PR context)"
+echo "  │   ├── metrics/     (gitignored, tracking)"
 echo "  │   ├── settings.json"
 echo "  │   └── docs.md"
 echo "  └── CLAUDE.md        (project memory)"
@@ -226,8 +264,16 @@ echo ""
 echo "Next steps:"
 echo "  1. cd $TARGET_DIR"
 echo "  2. git add .claude/ CLAUDE.md"
-echo "  3. git commit -m 'chore: add Claude Code configuration'"
-echo "  4. Start Claude: claude"
-echo "  5. Try: /plan, /qa, /ship"
+echo "  3. git commit -m 'chore: add Claude Code v3.0 configuration'"
+echo "  4. (Optional) Copy notifications.json.template to notifications.json"
+echo "  5. Start Claude: claude"
+echo "  6. Try: /plan, /qa, /ship, /ralph"
+echo ""
+echo "Key commands:"
+echo "  /plan            - Think before coding"
+echo "  /qa              - Run tests until green"
+echo "  /ship            - Commit, push, and PR"
+echo "  /ralph           - Autonomous dev loop"
+echo "  /feature-workflow - Multi-agent orchestration"
 echo ""
 echo -e "${BLUE}Happy coding with your virtual team!${NC}"
