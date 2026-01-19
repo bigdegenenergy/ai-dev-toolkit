@@ -14,8 +14,9 @@ on:
 jobs:
   scan-content:
     name: Scan for PII in Content
-    # Skip bot actors to prevent any potential recursive triggers
-    if: "!contains(github.actor, '[bot]')"
+    # Only run on public repositories (PII in private repos is less critical)
+    # Also skip bot actors to prevent any potential recursive triggers
+    if: github.event.repository.visibility == 'public' && !contains(github.actor, '[bot]')
     runs-on: ubuntu-latest
     permissions:
       issues: write
