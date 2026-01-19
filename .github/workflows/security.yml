@@ -110,8 +110,9 @@ jobs:
   pii-scan:
     name: PII (Personal Information) Scan
     runs-on: ubuntu-latest
-    # Skip commits from github-actions[bot] to prevent infinite loops
-    if: github.actor != 'github-actions[bot]'
+    # Only run on public repositories (PII in private repos is less critical)
+    # Also skip commits from github-actions[bot] to prevent infinite loops
+    if: github.event.repository.visibility == 'public' && github.actor != 'github-actions[bot]'
     steps:
       - uses: actions/checkout@v4
         with:
