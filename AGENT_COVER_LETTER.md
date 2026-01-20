@@ -15,17 +15,15 @@ When addressing PR review comments:
 
 ## PR Context
 
-**PR Number:** #38
-**PR Title:** feat: add agent cover letter for agent-to-agent PR review communication
-**Review Iteration:** 3 (responding to second review - APPROVED with suggestions)
+**PR Number:** <!-- e.g., #42 -->
+**PR Title:** <!-- e.g., Add user authentication feature -->
+**Review Iteration:** <!-- e.g., 2 (second review after addressing first round) -->
 
 ---
 
 ## Previous Review Summary
 
-**Decision: APPROVED**
-
-The second review approved the PR, confirming that the security fixes were correctly implemented. Two additional suggestions were raised for consideration.
+<!-- Briefly summarize what the previous review requested -->
 
 ---
 
@@ -33,58 +31,59 @@ The second review approved the PR, confirming that the security fixes were corre
 
 ### Critical Issues
 
-_None - all critical issues from first review were resolved and verified._
+<!-- For each critical issue raised, explain how it was addressed -->
+
+#### Issue: [Issue Title from Review]
+
+- **Original Concern:** <!-- What the reviewer flagged -->
+- **Resolution:** <!-- How you fixed it -->
+- **Files Changed:** <!-- List of files modified to address this -->
+- **Verification:** <!-- How you verified the fix (tests, manual check, etc.) -->
 
 ---
 
 ### Important Issues
 
-#### Issue: Prevent GITHUB_ENV injection via random delimiters
+<!-- Same format as critical issues -->
 
-- **Original Concern:** Reviewer suggested using random delimiters when writing to `$GITHUB_ENV` to prevent heredoc injection attacks.
-- **Resolution:** **Not applicable** - The implementation writes to `/tmp/pr/agent_cover_letter.md` via file redirection (`head -c 10240 ... > /tmp/pr/...`), not to `$GITHUB_ENV`. No heredoc delimiter is used, so no injection vulnerability exists.
-- **Files Changed:** None needed
-- **Verification:** Code inspection confirms no `$GITHUB_ENV` writes in cover letter handling
+#### Issue: [Issue Title from Review]
+
+- **Original Concern:**
+- **Resolution:**
+- **Files Changed:**
+- **Verification:**
 
 ---
 
 ### Suggestions Addressed
 
-| Suggestion                           | Status   | Notes                                                                                                             |
-| ------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------- |
-| GITHUB_ENV random delimiters         | N/A      | Implementation uses file redirection, not GITHUB_ENV                                                              |
-| Verify changed_files.txt path format | Verified | `git diff --name-only` outputs clean paths like `AGENT_COVER_LETTER.md` (no `./` prefix), grep pattern is correct |
+<!-- Optional: Note which suggestions you incorporated -->
+
+| Suggestion         | Status                       | Notes  |
+| ------------------ | ---------------------------- | ------ |
+| Example suggestion | Implemented / Deferred / N/A | Reason |
 
 ---
 
 ## Additional Context for Reviewer
 
-The implementation was verified to be secure:
-
-1. **No GITHUB_ENV usage**: Cover letter content flows through `/tmp/pr/` files, never `$GITHUB_ENV`
-2. **Path format confirmed**: `git diff --name-only` produces clean relative paths matching the grep pattern `^AGENT_COVER_LETTER.md$`
-
-All security concerns from the original review have been addressed:
-
-- Stale persistence: Fixed via changed_files check
-- Prompt injection: Fixed via XML wrapping + UNTRUSTED marking
-- DoS: Fixed via 10KB limit
+<!-- Any additional context that would help the reviewer understand your changes -->
 
 ---
 
 ## Questions for Reviewer
 
-None - PR approved and ready to merge.
+<!-- Any questions or clarifications you need from the reviewer -->
 
 ---
 
 ## Checklist
 
-- [x] All critical issues addressed
-- [x] All important issues addressed
-- [x] Tests updated/added as needed (N/A - workflow change)
-- [x] Documentation updated if behavior changed
-- [x] No new linting/formatting errors introduced
+- [ ] All critical issues addressed
+- [ ] All important issues addressed
+- [ ] Tests updated/added as needed
+- [ ] Documentation updated if behavior changed
+- [ ] No new linting/formatting errors introduced
 
 ---
 

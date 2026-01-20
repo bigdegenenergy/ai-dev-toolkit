@@ -96,7 +96,8 @@ jobs:
           # Agent cover letter for agent-to-agent communication
           # IMPORTANT: Only consider cover letter if it was MODIFIED in this PR
           # This prevents stale cover letters from triggering re-review mode on unrelated PRs
-          if grep -q "^AGENT_COVER_LETTER.md$" /tmp/pr/changed_files.txt && [ -f "AGENT_COVER_LETTER.md" ]; then
+          # Security: Reject symlinks to prevent arbitrary file read attacks
+          if grep -q "^AGENT_COVER_LETTER.md$" /tmp/pr/changed_files.txt && [ -f "AGENT_COVER_LETTER.md" ] && [ ! -L "AGENT_COVER_LETTER.md" ]; then
             # Limit to 10KB to prevent DoS
             head -c 10240 AGENT_COVER_LETTER.md > /tmp/pr/agent_cover_letter.md
             echo "Found agent cover letter (modified in this PR)"
