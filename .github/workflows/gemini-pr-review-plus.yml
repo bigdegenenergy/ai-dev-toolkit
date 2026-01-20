@@ -93,6 +93,14 @@ jobs:
             echo "No commit context generator found" > /tmp/pr/commit_context.md
           fi
 
+          # Agent cover letter for agent-to-agent communication
+          if [ -f "AGENT_COVER_LETTER.md" ]; then
+            cp AGENT_COVER_LETTER.md /tmp/pr/agent_cover_letter.md
+            echo "Found agent cover letter"
+          else
+            echo "No agent cover letter found" > /tmp/pr/agent_cover_letter.md
+          fi
+
       - name: 🤖 Run Gemini Quality Review
         if: steps.check-key.outputs.skip != 'true'
         id: gemini
@@ -119,6 +127,7 @@ jobs:
           commit_messages = read(PR_DIR / "commit_messages.txt")
           pr_body = read(PR_DIR / "pr_body.txt")
           commit_context = read(PR_DIR / "commit_context.md")
+          agent_cover_letter = read(PR_DIR / "agent_cover_letter.md")
 
           # Load per-file patch contents
           patches = []
@@ -202,6 +211,16 @@ jobs:
           if commit_context.strip() and not any(x in commit_context for x in ["No commit context", "Context generation failed", "No changes"]):
             context_section += f"\n## Auto-Generated Change Context\n{commit_context}\n"
 
+          # Agent cover letter - important context from repo agent addressing previous review
+          has_cover_letter = (agent_cover_letter.strip() and
+                              "No agent cover letter found" not in agent_cover_letter and
+                              "<!-- e.g.," not in agent_cover_letter)  # Not just the template
+          if has_cover_letter:
+            context_section += f"\n## Agent Cover Letter (Previous Review Response)\n"
+            context_section += "**IMPORTANT:** The repository agent has provided this cover letter addressing previous review feedback. "
+            context_section += "Consider whether the stated resolutions adequately address the original concerns.\n\n"
+            context_section += f"{agent_cover_letter}\n"
+
           shared_header = f"""\
           Project Context:
           - Repo: {os.environ.get("GITHUB_REPOSITORY", "")}
@@ -222,14 +241,20 @@ jobs:
           """
 
           # ---- Pass A: Quality review TOML ----
+          is_resubmission = has_cover_letter
+
           quality_prompt = f"""\
           You are a senior code reviewer.
 
           {shared_header}
 
+          {"RE-REVIEW CONTEXT:" if is_resubmission else ""}
+          {"This is a re-submission. The repository agent has provided a cover letter explaining how they addressed previous review feedback. Carefully evaluate whether the stated resolutions adequately address the original concerns. If issues remain unresolved or new issues are introduced, note them." if is_resubmission else ""}
+
           TASK:
           Provide a QUALITY-focused review (bugs, correctness, tests, maintainability, types, error handling).
           Do NOT focus on malicious intent in this pass unless it directly affects correctness.
+          {"Pay special attention to the Agent Cover Letter section - verify that claimed fixes are actually implemented." if is_resubmission else ""}
 
           OUTPUT FORMAT (REQUIRED):
           You MUST respond with a valid TOML document. Do not include any text outside the TOML.

@@ -381,6 +381,60 @@ The Gemini PR review workflow automatically reads:
 
 This gives Gemini rich context about _what_ changed and _why_, resulting in more relevant and actionable code review feedback.
 
+## Agent Cover Letter (Agent-to-Agent Communication)
+
+The `AGENT_COVER_LETTER.md` file enables communication between the repository agent (Claude) and the review agent (Gemini PR Review). This allows the repo agent to address previous review feedback in a structured way.
+
+### How It Works
+
+1. **Initial Review**: Gemini reviews the PR and posts feedback
+2. **Agent Response**: The repo agent (Claude) fixes issues and fills out `AGENT_COVER_LETTER.md` explaining what was addressed
+3. **Re-Review**: Gemini reads the cover letter along with the new changes and evaluates whether concerns were resolved
+
+### Cover Letter Structure
+
+The cover letter includes:
+
+- **PR Context**: PR number, title, review iteration
+- **Previous Review Summary**: What the reviewer requested
+- **Addressed Issues**: For each issue (critical, important, suggestions):
+  - Original concern
+  - Resolution approach
+  - Files changed
+  - Verification method
+- **Additional Context**: Any extra info for the reviewer
+- **Questions**: Clarifications needed from reviewer
+
+### Usage
+
+When addressing PR review feedback:
+
+```bash
+# 1. Edit the cover letter to document your changes
+vim AGENT_COVER_LETTER.md
+
+# 2. Commit the cover letter with your fixes
+git add AGENT_COVER_LETTER.md
+git commit -m "Address PR review feedback"
+
+# 3. Push - the PR review workflow will read the cover letter on re-review
+git push
+```
+
+The Gemini reviewer will:
+
+- Detect this is a re-submission based on the cover letter
+- Verify claimed fixes are actually implemented
+- Check if any issues remain unresolved
+- Identify any new issues introduced
+
+### Best Practices
+
+- **Be specific**: Reference exact file paths and line numbers
+- **Explain your reasoning**: Help the reviewer understand your approach
+- **Acknowledge trade-offs**: If you chose not to implement a suggestion, explain why
+- **Update the checklist**: Mark items as addressed before committing
+
 ## Pre-Commit Hook (Linting & Formatting)
 
 The pre-commit hook automatically runs before any `git commit` command to ensure code quality:
@@ -595,6 +649,11 @@ Track improvements to this configuration:
   - New `autonomous-loop` skill with dual-condition exit gate and structured status reporting
   - Added project templates (`PROMPT.md`, `fix_plan.md`, `AGENT.md`) in `.claude/templates/ralph/`
   - Total: 18 agents, 11 skills, 22 commands, 8 hooks
+- **2026-01-20**: **Agent Cover Letter** - Added agent-to-agent communication for PR reviews:
+  - New `AGENT_COVER_LETTER.md` template for repo agent to address review feedback
+  - Updated Gemini PR review workflow to read and consider cover letters
+  - Re-review mode: Gemini verifies claimed fixes are actually implemented
+  - Enables structured dialog between Claude (repo agent) and Gemini (review agent)
 
 ---
 
