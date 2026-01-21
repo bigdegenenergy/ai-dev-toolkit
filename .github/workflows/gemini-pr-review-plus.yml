@@ -431,6 +431,8 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           AUTHOR: ${{ github.event.pull_request.user.login }}
+          DECISION: ${{ steps.gemini.outputs.decision }}
+          JOB_STATUS: ${{ job.status }}
         run: |
           set -euo pipefail
           if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
@@ -447,13 +449,29 @@ jobs:
           pr_title = html.escape(os.environ.get("PR_TITLE", "Unknown"))
           pr_url = os.environ.get("PR_URL", "")
           author = html.escape(os.environ.get("AUTHOR", "unknown"))
+          decision = os.environ.get("DECISION", "UNKNOWN")
+          job_status = os.environ.get("JOB_STATUS", "unknown")
 
-          msg = f"""🤖 <b>PR Review Complete</b>
+          # Determine emoji and status
+          if job_status == "failure":
+            emoji = "❌"
+            status = "WORKFLOW FAILED"
+          elif decision == "APPROVE":
+            emoji = "✅"
+            status = "APPROVED"
+          elif decision == "REQUEST_CHANGES":
+            emoji = "🔴"
+            status = "CHANGES REQUESTED"
+          else:
+            emoji = "💬"
+            status = decision or "COMMENT"
 
-          <b>PR #{pr_number}:</b> {pr_title}
-          <b>Author:</b> {author}
+          msg = f"""{emoji} <b>PR Review: {status}</b>
 
-          <a href="{pr_url}">View PR</a>"""
+<b>PR #{pr_number}:</b> {pr_title}
+<b>Author:</b> {author}
+
+<a href="{pr_url}">View PR</a>"""
           payload = {
             "chat_id": chat,
             "text": msg,
