@@ -24,32 +24,35 @@ Agent-Note: Fixed SQL injection in auth.ts by using parameterized queries.
 
 ```toml
 [review]
-summary = "The refactor to a git-native agent workflow is promising, but the current implementation breaks CI for external contributors (forks) and accidentally commits ephemeral instruction files to the codebase."
+summary = "The PR introduces a promising agentic workflow but accidentally commits ephemeral artifacts and includes CI configurations that will break on forked repositories. Security scoping for the agent command needs tightening."
 decision = "REQUEST_CHANGES"
-
-[[issues]]
-severity = "critical"
-file = ".github/workflows/gemini-pr-review-plus.yml"
-title = "Workflow will fail on forks due to write permissions"
-description = "You have escalated permissions to `contents: write` to allow the workflow to push `REVIEW_INSTRUCTIONS.md`. GitHub Actions does not grant write tokens to PRs originating from forks. This step will fail for any external contributor."
-suggestion = "Wrap the push step in a condition: `if: github.event.pull_request.head.repo.full_name == github.repository`. Alternatively, use a distinct workflow for the response cycle that does not block the main PR checks."
 
 [[issues]]
 severity = "important"
 file = "REVIEW_INSTRUCTIONS.md"
-title = "Ephemeral agent instructions committed to PR"
-description = "`REVIEW_INSTRUCTIONS.md` is intended to be a temporary communication file (as per CLAUDE.md changes). It is currently included in the PR diff. Merging this will pollute `main` with outdated instructions."
-suggestion = "Remove this file from the PR. Add `REVIEW_INSTRUCTIONS.md` to `.gitignore` to prevent future accidental commits."
+title = "Ephemeral artifact committed to repository"
+description = "The `REVIEW_INSTRUCTIONS.md` file is intended to be a temporary communication channel between agents and should be deleted by the coding agent before committing. Its presence in the PR indicates the `/wake` cycle did not complete successfully or the file was manually added."
+suggestion = "Remove this file from the PR and ensure `.gitignore` prevents it from being committed in the future."
+
+[[issues]]
+severity = "critical"
+file = ".github/workflows/gemini-pr-review-plus.yml"
+title = "Workflow fails on forked repositories"
+description = "The workflow uses `contents: write` and attempts to `git push` changes back to the branch. This will fail for Pull Requests originating from forks because the `GITHUB_TOKEN` is read-only for forks. This effectively breaks CI for external contributors."
+suggestion = "Add a condition to skip the push step if `github.event.pull_request.head.repo.fork` is true, or use `continue-on-error: true` for the push step."
 
 [[issues]]
 severity = "important"
-file = ".github/workflows/gemini-pr-review-plus.yml"
-title = "Infinite loop risk in git-native workflow"
-description = "The workflow pushes commits back to the PR branch. While the commit message trailer `[skip ci]` is standard, ensure the `Push Instructions` step explicitly uses it in the commit message. If missing, the push will trigger the workflow again, creating an infinite billing/execution loop."
+file = ".claude/commands/wake.md"
+title = "Excessive agent permissions"
+description = "The `/wake` command grants `Bash(*)` permissions to the agent. In a security-sensitive repo handling transactions/keys, giving the agent unrestricted shell access is high risk. If the instruction file is spoofed, it could lead to arbitrary code execution."
+suggestion = "Restrict `allowed-tools` to the specific git commands and file operations needed (e.g., `Bash(git, rm, ls)`), or ensure strict sandboxing of the agent environment."
 
 [[issues]]
 severity = "suggestion"
 file = ".github/workflows/gemini-pr-review-plus.yml"
-title = "Verify Telegram environment variable mapping"
-description = "The agent note mentions adding `DECISION` and `JOB_STATUS` to the Telegram step. Ensure these are explicitly mapped in the `env:` block of that specific step, otherwise the script will reference undefined variables."
+line = 158
+title = "Potential infinite loop on push"
+description = "While `GITHUB_TOKEN` pushes typically don't trigger workflows, using `[skip ci]` in the commit message is a safer practice to guarantee this workflow doesn't trigger itself recursively if the token type changes in the future."
+suggestion = "Ensure the commit message in the workflow (line 158) retains the `[skip ci]` tag (it currently does, but verify it works with the specific CI provider settings)."
 ```
