@@ -291,7 +291,8 @@ jobs:
           decision = q_data["review"].get("decision", "COMMENT") if q_data and "review" in q_data else "COMMENT"
           issues = q_data.get("issues", []) if q_data else []
 
-          if decision in ("REQUEST_CHANGES", "COMMENT") and issues:
+          # Create instructions for ANY issues, even on APPROVE (suggestions may still need addressing)
+          if issues:
             has_feedback = True
             instr = []
             instr.append("# ⚠️ REVIEW INSTRUCTIONS")
@@ -411,6 +412,10 @@ jobs:
 
           git add REVIEW_INSTRUCTIONS.md
           git commit -m "chore: add review instructions for coding agent [skip ci]"
+
+          # Pull with rebase to handle race condition if branch advanced during review
+          git pull --rebase origin ${{ github.head_ref }} || true
+
           git push
 
       - name: 💬 Post PR comment
