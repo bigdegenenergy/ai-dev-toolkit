@@ -466,12 +466,12 @@ jobs:
             emoji = "💬"
             status = decision or "COMMENT"
 
-          msg = f"""{emoji} <b>PR Review: {status}</b>
-
-<b>PR #{pr_number}:</b> {pr_title}
-<b>Author:</b> {author}
-
-<a href="{pr_url}">View PR</a>"""
+          msg = (
+            f"{emoji} <b>PR Review: {status}</b>\n\n"
+            f"<b>PR #{pr_number}:</b> {pr_title}\n"
+            f"<b>Author:</b> {author}\n\n"
+            f'<a href="{pr_url}">View PR</a>'
+          )
           payload = {
             "chat_id": chat,
             "text": msg,
