@@ -208,7 +208,16 @@ jobs:
               body
             });
 
-      # Security: Checkout default branch first to get trusted scripts
+      # Checkout PR branch first (to avoid workspace cleaning issues)
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PR_BRANCH }}
+          fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN }}
+          path: pr-workspace
+
+      # Security: Then checkout trusted scripts from default branch
       - name: Checkout trusted scripts from default branch
         uses: actions/checkout@v4
         with:
@@ -218,27 +227,19 @@ jobs:
             .github/scripts
           sparse-checkout-cone-mode: false
 
-      # Then checkout the PR branch for the working directory
-      - name: Checkout PR branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.PR_BRANCH }}
-          fetch-depth: 0
-          token: ${{ secrets.GH_TOKEN }}
-          path: pr-workspace
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       # Security: Install SDK in isolated temp directory with --ignore-scripts
-      - name: Install Claude Code SDK (isolated)
+      # Pin version to prevent supply chain attacks from upstream updates
+      - name: Install Claude Code SDK (isolated, pinned)
         run: |
           mkdir -p /tmp/claude-sdk
           cd /tmp/claude-sdk
           npm init -y
-          npm install @anthropic-ai/claude-code --ignore-scripts
+          npm install @anthropic-ai/claude-code@0.2.57 --ignore-scripts
         env:
           NODE_ENV: production
 
