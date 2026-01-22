@@ -1,0 +1,35 @@
+# Claude AI agent files and internal utilities
+.claude/
+
+# Git files
+.git/
+.github/
+
+# Documentation
+*.md
+docs/
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test files
+test/
+tests/
+*.test.js
+*.spec.js
+*.test.ts
+*.spec.ts
+
+# Configuration files
+.editorconfig
+.prettierrc
+.eslintrc*
+tsconfig.json
+
+# Temporary files
+/tmp/
+*.log

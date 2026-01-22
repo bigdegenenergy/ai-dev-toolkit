@@ -4,6 +4,9 @@
 # Generated artifacts (commit context, etc.)
 .claude/artifacts/
 
+# Internal scripts and utilities (should not be committed)
+.claude/scripts/
+
 # Temporary files
 /tmp/
 *.log
