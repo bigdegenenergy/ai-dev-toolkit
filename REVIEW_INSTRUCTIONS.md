@@ -4,38 +4,54 @@
 
 ```toml
 [review]
-summary = "This PR contains critical issues regarding module resolution in the script and potential data loss in the review workflow. Specifically, attempting to `require()` an `.mjs` file will cause the Node.js script to crash. Additionally, the generated `REVIEW_INSTRUCTIONS.md` file should not be committed to the repository."
+summary = "The PR introduces a Claude Code integration for automated implementation. While the feature set is promising, there are critical logic issues in the workflow triggers (potential infinite loops), risky git operations that may cause data loss, and significant debug code left in the production workflows. Additionally, the inclusion of `REVIEW_INSTRUCTIONS.md` as a committed file is problematic."
 decision = "REQUEST_CHANGES"
 
 [[issues]]
 severity = "critical"
-file = ".github/scripts/claude-code-implement.cjs"
-line = 22
-title = "Invalid CommonJS require of ES Module"
-description = "The script attempts to use `require()` to load `cli.mjs`. Node.js does not support loading ES Modules (.mjs) via `require()`; this will throw `ERR_REQUIRE_ESM` at runtime. Furthermore, treating a CLI entry point as a library module is fragile."
-suggestion = "Use `child_process.spawn` or `exec` to run the CLI binary as a separate process. If programmatic access is absolutely required, you must use dynamic `await import(...)`, but this requires the enclosing script to be asynchronous."
+file = ".github/workflows/claude-code-implement.yml"
+line = 30
+title = "Potential Trigger Loop in `detect-trigger`"
+description = "The `detect-trigger` job appears to fetch all comments using `listComments` to check for an `/accept` command. If the logic simply checks if *any* comment contains `/accept` (without verifying it is the *new* comment that triggered the workflow), this will cause the implementation job to run repeatedly on every subsequent comment (including the bot's own replies), potentially creating an infinite billing/execution loop."
+suggestion = "Modify the trigger logic to primarily check `context.payload.comment.body` for the command, or ensure the command is in the most recent comment only."
+
+[[issues]]
+severity = "critical"
+file = ".github/workflows/gemini-pr-review-plus.yml"
+line = 12
+title = "Potential Data Loss with `git reset --hard`"
+description = "The switch from `git pull --rebase` to `git reset --hard origin/...` inside the 'Add instructions' step is destructive. If the review instructions were generated/modified in a previous step (and the file is tracked), `git reset --hard` will revert those changes before they are committed, resulting in the loss of the new review data."
+suggestion = "If the instruction file is generated before this step, use `git stash` + `git pull` + `git stash pop` or simply `git pull --rebase`. Only use `reset --hard` if the file generation happens *after* this reset command in the same script block."
 
 [[issues]]
 severity = "important"
-file = ".github/workflows/gemini-pr-review-plus.yml"
-line = 0
-title = "Data loss risk with git reset --hard"
-description = "Replacing `git pull --rebase` with `git reset --hard` will irreversibly delete any uncommitted files in the runner's workspace. If the `REVIEW_INSTRUCTIONS.md` file is generated in the workspace (and not backed up to `/tmp`), it will be lost before the `git add` step runs."
-suggestion = "Verify that the generated instructions file is stored in `/tmp` (outside the git repo) before running `git reset --hard`, and explicitly copy it back to the workspace before committing."
+file = ".github/workflows/claude-code-implement.yml"
+line = 60
+title = "Excessive Debug Code in Workflow"
+description = "The workflow contains temporary debug commands (`ls -la`, `cat package.json`, `node -e ...`) and verbose flags. These clutter logs and expose internal path structures."
+suggestion = "Remove all debug `run` steps and verbose flags before merging."
 
 [[issues]]
 severity = "important"
 file = "REVIEW_INSTRUCTIONS.md"
 line = 1
-title = "Generated artifact committed to repository"
-description = "The file `REVIEW_INSTRUCTIONS.md` appears to be the output of an automated review tool. Committing this specific feedback to the repository pollution the codebase and history."
-suggestion = "Remove this file from the PR. Configure the workflow to post instructions as a comment or strictly use ephemeral files that are not committed to the `main` branch."
+title = "Ephemeral Artifact Committed to Repo"
+description = "The `REVIEW_INSTRUCTIONS.md` file appears to be a generated output containing feedback for a specific PR (ironically warning about itself). Committing this file pollutes the git history and creates constant merge conflicts."
+suggestion = "Remove this file from the PR. Configure the workflow to pass instructions via GitHub Actions Artifacts or a temporary untracked file, rather than committing it to the repository."
+
+[[issues]]
+severity = "important"
+file = ".github/scripts/claude-code-implement.cjs"
+line = 2
+title = "Potential ESM Incompatibility"
+description = "The script uses `require()` to load `@anthropic-ai/claude-code`. If this package is ESM-only (common for modern CLI tools), this script will crash with `ERR_REQUIRE_ESM`. The script extension `.cjs` forces CommonJS, making it impossible to `require` ESM modules."
+suggestion = "Verify if `@anthropic-ai/claude-code` exports CommonJS. If not, convert the script to ESM (`.mjs`) or use dynamic `import()`."
 
 [[issues]]
 severity = "suggestion"
 file = ".github/workflows/claude-code-implement.yml"
-line = 60
-title = "Redundant SDK installation"
-description = "The workflow installs the SDK in two locations: `/tmp/claude-sdk` and `_trusted_scripts/.github/scripts`. Since the script explicitly resolves the module using `SDK_PATH` (pointing to `/tmp`), the installation in `_trusted_scripts` is unnecessary overhead."
-suggestion = "Remove the redundant `npm install` step targeting `_trusted_scripts`."
+line = 50
+title = "Redundant SDK Installation"
+description = "The workflow installs the SDK in two separate locations: `/tmp/claude-sdk` and `.github/scripts`. This increases build time and complexity."
+suggestion = "Standardize on a single installation path (preferably within the workspace or a cached directory) and configure `NODE_PATH` accordingly."
 ```
