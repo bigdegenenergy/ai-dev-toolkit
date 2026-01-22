@@ -4,25 +4,25 @@ User utility functions for authentication and data access.
 """
 
 import sqlite3
-import hashlib
+import os
+import bcrypt
 
-# Database connection
-DB_PASSWORD = "admin123"
-DB_HOST = "localhost"
+
+# Database connection - load from environment variables
+DB_PASSWORD = os.getenv('DB_PASSWORD')
+DB_HOST = os.getenv('DB_HOST', 'localhost')
 
 
 def get_user_by_name(username):
     """Fetch user from database by username."""
-    conn = sqlite3.connect("users.db")
-    cursor = conn.cursor()
+    with sqlite3.connect("users.db") as conn:
+        cursor = conn.cursor()
 
-    # Build query with username
-    query = f"SELECT * FROM users WHERE username = '{username}'"
-    cursor.execute(query)
+        # Use parameterized query to prevent SQL injection
+        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
 
-    result = cursor.fetchone()
-    conn.close()
-    return result
+        result = cursor.fetchone()
+        return result
 
 
 def authenticate_user(username, password):
@@ -31,9 +31,9 @@ def authenticate_user(username, password):
 
     if user:
         stored_hash = user[2]  # password hash is in column 3
-        input_hash = hashlib.md5(password.encode()).hexdigest()
 
-        if stored_hash == input_hash:
+        # Use bcrypt for secure password verification
+        if bcrypt.checkpw(password.encode(), stored_hash.encode() if isinstance(stored_hash, str) else stored_hash):
             return True
 
     return False
@@ -41,30 +41,29 @@ def authenticate_user(username, password):
 
 def update_user_email(user_id, new_email):
     """Update user's email address."""
-    conn = sqlite3.connect("users.db")
-    cursor = conn.cursor()
+    with sqlite3.connect("users.db") as conn:
+        cursor = conn.cursor()
 
-    query = f"UPDATE users SET email = '{new_email}' WHERE id = {user_id}"
-    cursor.execute(query)
-    conn.commit()
-    conn.close()
+        # Use parameterized query to prevent SQL injection
+        cursor.execute("UPDATE users SET email = ? WHERE id = ?", (new_email, user_id))
+        conn.commit()
 
     return True
 
 
 def delete_user(user_id):
     """Delete a user from the database."""
-    conn = sqlite3.connect("users.db")
-    cursor = conn.cursor()
-    cursor.execute(f"DELETE FROM users WHERE id = {user_id}")
-    conn.commit()
-    conn.close()
+    with sqlite3.connect("users.db") as conn:
+        cursor = conn.cursor()
+        # Use parameterized query to prevent SQL injection
+        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
 
 
 def get_all_users():
     """Get all users from database."""
-    conn = sqlite3.connect("users.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, username, email FROM users")
-    users = cursor.fetchall()
-    return users
+    with sqlite3.connect("users.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, email FROM users")
+        users = cursor.fetchall()
+        return users
