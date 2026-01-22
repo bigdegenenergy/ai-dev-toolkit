@@ -4,30 +4,38 @@
 
 ```toml
 [review]
-summary = "The PR introduces necessary fixes for the Claude Code integration, specifically improving module resolution, switching to a more reliable command-based trigger (`/accept`), and handling git conflicts in the review workflow. However, the PR incorrectly includes a generated artifact (`REVIEW_INSTRUCTIONS.md`) which must be removed before merging."
+summary = "This PR contains critical issues regarding module resolution in the script and potential data loss in the review workflow. Specifically, attempting to `require()` an `.mjs` file will cause the Node.js script to crash. Additionally, the generated `REVIEW_INSTRUCTIONS.md` file should not be committed to the repository."
 decision = "REQUEST_CHANGES"
+
+[[issues]]
+severity = "critical"
+file = ".github/scripts/claude-code-implement.cjs"
+line = 22
+title = "Invalid CommonJS require of ES Module"
+description = "The script attempts to use `require()` to load `cli.mjs`. Node.js does not support loading ES Modules (.mjs) via `require()`; this will throw `ERR_REQUIRE_ESM` at runtime. Furthermore, treating a CLI entry point as a library module is fragile."
+suggestion = "Use `child_process.spawn` or `exec` to run the CLI binary as a separate process. If programmatic access is absolutely required, you must use dynamic `await import(...)`, but this requires the enclosing script to be asynchronous."
+
+[[issues]]
+severity = "important"
+file = ".github/workflows/gemini-pr-review-plus.yml"
+line = 0
+title = "Data loss risk with git reset --hard"
+description = "Replacing `git pull --rebase` with `git reset --hard` will irreversibly delete any uncommitted files in the runner's workspace. If the `REVIEW_INSTRUCTIONS.md` file is generated in the workspace (and not backed up to `/tmp`), it will be lost before the `git add` step runs."
+suggestion = "Verify that the generated instructions file is stored in `/tmp` (outside the git repo) before running `git reset --hard`, and explicitly copy it back to the workspace before committing."
 
 [[issues]]
 severity = "important"
 file = "REVIEW_INSTRUCTIONS.md"
 line = 1
 title = "Generated artifact committed to repository"
-description = "The file `REVIEW_INSTRUCTIONS.md` appears to be a temporary or generated file containing specific instructions for an agent run. It should not be committed to the source control history of the main branch."
-suggestion = "Remove this file from the PR."
+description = "The file `REVIEW_INSTRUCTIONS.md` appears to be the output of an automated review tool. Committing this specific feedback to the repository pollution the codebase and history."
+suggestion = "Remove this file from the PR. Configure the workflow to post instructions as a comment or strictly use ephemeral files that are not committed to the `main` branch."
 
 [[issues]]
 severity = "suggestion"
-file = ".github/scripts/claude-code-implement.cjs"
-line = 14
-title = "Brittle module resolution"
-description = "Constructing paths directly into `node_modules` using `path.join(sdkPath, 'node_modules', ...)` is brittle. It assumes a specific folder structure that might change with different package managers or hoisting behaviors."
-suggestion = "Consider using `require.resolve('@anthropic-ai/claude-code', { paths: [sdkPath] })` to robustly locate the package entry point."
-
-[[issues]]
-severity = "suggestion"
-file = ".github/workflows/gemini-pr-review-plus.yml"
-line = 1
-title = "Potential data loss with git reset strategy"
-description = "Replacing `git pull --rebase` with `git reset --hard` effectively resolves merge conflicts for the instructions file but will wipe out any other uncommitted changes in the workspace. While acceptable for this specific atomic operation, be cautious if this job evolves to generate other artifacts."
-suggestion = "No immediate change needed, but ensure this step remains isolated to avoid accidental data loss of other artifacts."
+file = ".github/workflows/claude-code-implement.yml"
+line = 60
+title = "Redundant SDK installation"
+description = "The workflow installs the SDK in two locations: `/tmp/claude-sdk` and `_trusted_scripts/.github/scripts`. Since the script explicitly resolves the module using `SDK_PATH` (pointing to `/tmp`), the installation in `_trusted_scripts` is unnecessary overhead."
+suggestion = "Remove the redundant `npm install` step targeting `_trusted_scripts`."
 ```
