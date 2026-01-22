@@ -285,20 +285,26 @@ jobs:
           # NODE_PATH for main branch script (uses standard require)
           NODE_PATH: /tmp/claude-sdk/node_modules
         run: |
-          # Debug: Show script location and node_modules
-          echo "=== Debug Info ==="
-          echo "Script location: ${{ github.workspace }}/_trusted_scripts/.github/scripts/"
-          echo "SDK_PATH: $SDK_PATH"
-          echo "NODE_PATH: $NODE_PATH"
-          ls -la ${{ github.workspace }}/_trusted_scripts/.github/scripts/
-          echo "SDK at /tmp/claude-sdk:"
-          ls -la /tmp/claude-sdk/node_modules/@anthropic-ai/ 2>/dev/null || echo "not found!"
-          echo "SDK at script dir:"
-          ls -la ${{ github.workspace }}/_trusted_scripts/.github/scripts/node_modules/@anthropic-ai/ 2>/dev/null || echo "not found!"
+          # Debug: Detailed package info
+          echo "=== Debug: Checking package structure ==="
+          SCRIPT_DIR="${{ github.workspace }}/_trusted_scripts/.github/scripts"
+          echo "Script directory: $SCRIPT_DIR"
+
+          echo "--- Script file (first 15 lines) ---"
+          head -15 "$SCRIPT_DIR/claude-code-implement.cjs"
+
+          echo "--- Package.json in claude-code ---"
+          cat "$SCRIPT_DIR/node_modules/@anthropic-ai/claude-code/package.json" 2>/dev/null | head -20 || echo "NOT FOUND!"
+
+          echo "--- Testing require resolution ---"
+          node -e "console.log(require.resolve('@anthropic-ai/claude-code', {paths: ['$SCRIPT_DIR']}))" 2>&1 || echo "resolve failed"
+
+          echo "--- Direct test load ---"
+          cd "$SCRIPT_DIR" && node -e "console.log('Loaded:', require('@anthropic-ai/claude-code'))" 2>&1 || echo "direct load failed"
           echo "=================="
 
           # Security: Execute trusted script from default branch, not PR branch
-          node ${{ github.workspace }}/_trusted_scripts/.github/scripts/claude-code-implement.cjs
+          cd "$SCRIPT_DIR" && node claude-code-implement.cjs
 
       - name: Configure git
         working-directory: pr-workspace
