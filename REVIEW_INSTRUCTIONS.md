@@ -4,54 +4,38 @@
 
 ```toml
 [review]
-summary = "The PR introduces a Claude Code integration for automated implementation. While the feature set is promising, there are critical logic issues in the workflow triggers (potential infinite loops), risky git operations that may cause data loss, and significant debug code left in the production workflows. Additionally, the inclusion of `REVIEW_INSTRUCTIONS.md` as a committed file is problematic."
+summary = "The PR includes several fixes for the Claude Code agent workflow, but also contains temporary artifacts and debugging code that must be cleaned up before merging. Specifically, the `REVIEW_INSTRUCTIONS.md` file and verbose debug logging in the workflow should be removed."
 decision = "REQUEST_CHANGES"
 
 [[issues]]
 severity = "critical"
-file = ".github/workflows/claude-code-implement.yml"
-line = 30
-title = "Potential Trigger Loop in `detect-trigger`"
-description = "The `detect-trigger` job appears to fetch all comments using `listComments` to check for an `/accept` command. If the logic simply checks if *any* comment contains `/accept` (without verifying it is the *new* comment that triggered the workflow), this will cause the implementation job to run repeatedly on every subsequent comment (including the bot's own replies), potentially creating an infinite billing/execution loop."
-suggestion = "Modify the trigger logic to primarily check `context.payload.comment.body` for the command, or ensure the command is in the most recent comment only."
-
-[[issues]]
-severity = "critical"
-file = ".github/workflows/gemini-pr-review-plus.yml"
-line = 12
-title = "Potential Data Loss with `git reset --hard`"
-description = "The switch from `git pull --rebase` to `git reset --hard origin/...` inside the 'Add instructions' step is destructive. If the review instructions were generated/modified in a previous step (and the file is tracked), `git reset --hard` will revert those changes before they are committed, resulting in the loss of the new review data."
-suggestion = "If the instruction file is generated before this step, use `git stash` + `git pull` + `git stash pop` or simply `git pull --rebase`. Only use `reset --hard` if the file generation happens *after* this reset command in the same script block."
-
-[[issues]]
-severity = "important"
-file = ".github/workflows/claude-code-implement.yml"
-line = 60
-title = "Excessive Debug Code in Workflow"
-description = "The workflow contains temporary debug commands (`ls -la`, `cat package.json`, `node -e ...`) and verbose flags. These clutter logs and expose internal path structures."
-suggestion = "Remove all debug `run` steps and verbose flags before merging."
-
-[[issues]]
-severity = "important"
 file = "REVIEW_INSTRUCTIONS.md"
 line = 1
-title = "Ephemeral Artifact Committed to Repo"
-description = "The `REVIEW_INSTRUCTIONS.md` file appears to be a generated output containing feedback for a specific PR (ironically warning about itself). Committing this file pollutes the git history and creates constant merge conflicts."
-suggestion = "Remove this file from the PR. Configure the workflow to pass instructions via GitHub Actions Artifacts or a temporary untracked file, rather than committing it to the repository."
+title = "Remove temporary review instructions file"
+description = "The `REVIEW_INSTRUCTIONS.md` file appears to be a generated artifact for the agent's consumption. Committing this to the repository is discouraged as it pollutes the history. Please remove it from the PR."
+suggestion = "git rm REVIEW_INSTRUCTIONS.md"
 
 [[issues]]
 severity = "important"
-file = ".github/scripts/claude-code-implement.cjs"
-line = 2
-title = "Potential ESM Incompatibility"
-description = "The script uses `require()` to load `@anthropic-ai/claude-code`. If this package is ESM-only (common for modern CLI tools), this script will crash with `ERR_REQUIRE_ESM`. The script extension `.cjs` forces CommonJS, making it impossible to `require` ESM modules."
-suggestion = "Verify if `@anthropic-ai/claude-code` exports CommonJS. If not, convert the script to ESM (`.mjs`) or use dynamic `import()`."
+file = ".github/workflows/claude-code-implement.yml"
+line = 0
+title = "Remove debug logging and consolidate SDK installation"
+description = "The workflow currently includes debugging steps (e.g., listing files) and installs the SDK in multiple locations (temp dir and script dir). This increases build time and complexity. Please remove the debug steps and ensure a single, clean installation strategy."
+suggestion = "Remove debug steps and use a single `npm install` location with appropriate `NODE_PATH`."
+
+[[issues]]
+severity = "important"
+file = ".github/workflows/gemini-pr-review-plus.yml"
+line = 0
+title = "Verify 'git reset' target branch"
+description = "The workflow was updated to use `git reset --hard` instead of `git pull --rebase`. Ensure that the reset target is the PR's source branch (e.g., `origin/${{ github.head_ref }}`) rather than `origin/main`. Resetting to `main` while on a PR branch will effectively discard the PR's changes."
+suggestion = "Confirm the git reset target matches the PR branch."
 
 [[issues]]
 severity = "suggestion"
-file = ".github/workflows/claude-code-implement.yml"
-line = 50
-title = "Redundant SDK Installation"
-description = "The workflow installs the SDK in two separate locations: `/tmp/claude-sdk` and `.github/scripts`. This increases build time and complexity."
-suggestion = "Standardize on a single installation path (preferably within the workspace or a cached directory) and configure `NODE_PATH` accordingly."
+file = ".github/scripts/claude-code-implement.cjs"
+line = 1
+title = "Verify named exports for ESM import"
+description = "The script uses `const { Claude } = await import(...)`. Ensure that the `@anthropic-ai/claude-code` package provides a named export `Claude`. If it relies on a default export, this destructuring might fail."
+suggestion = "Validate the import syntax against the package exports."
 ```
