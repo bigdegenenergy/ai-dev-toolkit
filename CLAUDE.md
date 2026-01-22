@@ -415,25 +415,27 @@ The PR review workflow uses a git-native approach for agent-to-agent communicati
 
 ### Claude Code Integration Commands
 
-| Command       | Effect                                                   |
-| ------------- | -------------------------------------------------------- |
-| `/accept`     | Accept and implement all suggestions as-is               |
-| `/implement`  | Same as `/accept`                                        |
-| Reply comment | Provide custom instructions for selective implementation |
+| Command             | Effect                                                   |
+| ------------------- | -------------------------------------------------------- |
+| `accept`            | Accept and implement all suggestions as-is               |
+| `yes` / `okay`      | Same as `accept`                                         |
+| `approved` / `lgtm` | Same as `accept`                                         |
+| Reply comment       | Provide custom instructions for selective implementation |
 
-**Example reply commands:**
+**Example replies:**
 
-- `Ignore suggestion #2, implement the rest`
+- `Accept all suggestions`
+- `Ignore #2, implement the rest`
 - `For the SQL injection issue, use parameterized queries instead`
-- `Implement security fixes only, skip style suggestions`
-- `Accept all but use try-catch for error handling`
+- `Only fix security issues, skip style suggestions`
+- `Implement but use try-catch for error handling`
 
 ### Review Instructions File
 
 When issues are found, Gemini pushes `REVIEW_INSTRUCTIONS.md` containing:
 
 - Workflow instructions (read, fix, delete, commit)
-- TOML-formatted issues to address
+- JSON-formatted issues with numbered IDs for selective acceptance
 - Example commit format
 
 The coding agent **must delete this file** after reading - it should never be merged.
