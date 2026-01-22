@@ -4,46 +4,38 @@
 
 ```toml
 [review]
-summary = "This PR introduces functional changes to the AI implementation workflow but includes a generated artifact that should not be merged. Additionally, the documentation in CLAUDE.md contradicts the code changes regarding reaction triggers (which were removed), and there is a logic bug in the local fallback path for the implementation script."
+summary = "This PR updates the Claude Code implementation logic to support ES Modules and improves git handling. However, the PR includes generated artifacts that should be removed, leftover debug logging in the workflow, and potentially misleading documentation regarding reaction triggers."
 decision = "REQUEST_CHANGES"
 
 [[issues]]
 severity = "important"
 file = "REVIEW_INSTRUCTIONS.md"
 line = 1
-title = "Do not merge generated artifacts"
-description = "This file appears to be an automatically generated report meant for temporary consumption by the agent. The file content itself explicitly states 'It should not be included in the repository or merged'. Please remove this file from the PR."
+title = "Remove generated artifact"
+description = "The file `REVIEW_INSTRUCTIONS.md` appears to be an automated output from the coding agent and explicitly states it should not be merged. Please remove this file."
 suggestion = "git rm REVIEW_INSTRUCTIONS.md"
 
 [[issues]]
 severity = "important"
-file = "CLAUDE.md"
-line = 1
-title = "Documentation contradicts code changes"
-description = "The updated `CLAUDE.md` states that users can 'react with 👍 to the prompt'. However, the PR description and workflow changes indicate that reaction detection was removed because it was unreliable. The documentation should reflect that only `/accept` (or `/implement`) commands are supported."
-suggestion = "Remove references to 👍 reaction triggers in CLAUDE.md."
+file = ".github/workflows/claude-code-implement.yml"
+line = 60
+title = "Remove forced debug logging"
+description = "The step 'Debug SDK package structure' uses `|| true` in its `if` condition, forcing verbose debug output (directory listings, file contents) in production runs. This clutters logs and exposes internal paths."
+suggestion = "Remove this debug step or strictly condition it on `vars.ACTIONS_STEP_DEBUG == 'true'`."
 
 [[issues]]
 severity = "important"
-file = ".github/scripts/claude-code-implement.cjs"
-line = 1
-title = "Broken default path resolution logic"
-description = "The `sdkPath` fallback defaults to `path.join(process.cwd(), 'node_modules', ...)` (which points to the package directory). However, the subsequent usage `path.join(sdkPath, 'node_modules', ...)` expects `sdkPath` to be the installation root (the parent of `node_modules`). If `SDK_PATH` is not set (e.g., during local testing), the script will construct an invalid path like `.../claude-code/node_modules/@anthropic-ai/claude-code/...` and fail to load the package."
-suggestion = "Change the default `sdkPath` to `process.cwd()` (or the expected installation root) to match the path structure assumed by the usage logic."
+file = "CLAUDE.md"
+line = 36
+title = "Clarify reaction trigger limitations"
+description = "The documentation suggests users can 'React to the prompt comment' to trigger implementation. However, the workflow triggers are `workflow_dispatch` and `issue_comment`. A simple reaction (emoji) does not generate an `issue_comment` event, so the workflow will not run until a subsequent comment is made. This creates a confusing user experience."
+suggestion = "Update the documentation to clarify that an explicit comment (e.g., `/accept`) is the primary trigger, or that reactions only take effect when accompanied by a comment."
 
 [[issues]]
 severity = "suggestion"
 file = ".github/workflows/claude-code-implement.yml"
-line = 1
-title = "Redundant SDK installation"
-description = "The SDK is installed in `/tmp/claude-sdk` and then immediately installed again in `.github/scripts`. The script explicitly uses `SDK_PATH` (pointing to `/tmp/claude-sdk`) for resolution. The second installation in `.github/scripts` appears unused and slows down the workflow."
-suggestion = "Remove the 'Install SDK in script location' step."
-
-[[issues]]
-severity = "suggestion"
-file = ".github/scripts/claude-code-implement.cjs"
-line = 1
-title = "Brittle entry point resolution"
-description = "Manually parsing `package.json` exports/main fields to find the entry point is fragile and reimplements complex Node.js resolution logic (which may fail on conditional exports). A more robust approach would be to use `createRequire`."
-suggestion = "Consider using `module.createRequire(path.join(sdkPath, 'node_modules')).resolve('@anthropic-ai/claude-code')` to rely on Node's native resolution."
+line = 50
+title = "Consolidate SDK installation"
+description = "The workflow installs the SDK in `/tmp/claude-sdk` and then immediately installs it again in `_trusted_scripts/.github/scripts`. Installing it twice is redundant. It is recommended to install it only once in the location referenced by `SDK_PATH`."
+suggestion = "Remove the redundant installation step and ensure `SDK_PATH` points to the single installation location."
 ```
