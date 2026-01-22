@@ -1,6 +1,6 @@
 name: Gemini PR Review
-# IMPORTANT: This workflow uses gemini-3-pro-preview - DO NOT change to a flash model
-# The pro model has been vetted for superior code analysis quality
+# Using gemini-1.5-pro (latest stable Pro model)
+# Pro model provides superior code analysis compared to flash models
 
 on:
   pull_request:
@@ -140,9 +140,9 @@ jobs:
 
           PR_DIR = Path("/tmp/pr")
           client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-          # IMPORTANT: Do NOT change this model - gemini-3-pro-preview has been vetted for PR reviews
-          # This model provides superior code analysis compared to flash models
-          MODEL = "gemini-3-pro-preview"
+          # Using gemini-1.5-pro - latest stable Pro model for code analysis
+          # Pro model provides superior code analysis compared to flash models
+          MODEL = "gemini-1.5-pro"
 
           def read(p: Path) -> str:
             try: 

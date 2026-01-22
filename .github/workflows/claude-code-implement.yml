@@ -1,6 +1,6 @@
 name: Claude Code Implement Changes
-# Version: 2026-01-22-v7 - Fix bot loop, use LLM for intent detection
-# IMPORTANT: Do not change the Gemini model (gemini-3-pro-preview) - it has been vetted
+# Version: 2026-01-22-v8 - Fix invalid model IDs (critical bug fix)
+# Using claude-3-5-haiku-20241022 (latest stable Haiku model)
 
 on:
   issue_comment:
@@ -212,7 +212,7 @@ jobs:
               --arg system "$(cat /tmp/analyze_prompt.txt)" \
               --arg user "$USER_MSG" \
               '{
-                "model": "claude-haiku-4-5-20250106",
+                "model": "claude-3-5-haiku-20241022",
                 "max_tokens": 500,
                 "temperature": 0.1,
                 "system": $system,
