@@ -4,38 +4,46 @@
 
 ```toml
 [review]
-summary = "This PR integrates the Claude Code SDK for automated implementation logic. The reaction-based trigger workaround (piggybacking on comment events) is clever and the security checks (validating actor permissions) are appropriate. However, the PR includes temporary artifacts (`REVIEW_INSTRUCTIONS.md`) that must be removed, and the workflow retains verbose debug logging. The manual package resolution strategy in the script is brittle but acceptable given the described upstream package issues."
+summary = "The PR migrates the Claude integration from the CLI to the programmatic SDK, which is a positive architectural improvement. However, there are significant issues regarding release hygiene (committing temporary review artifacts), dependency management (unpinned versions in CI), and brittle logic in the manual module resolution script that need addressing before merge."
 decision = "REQUEST_CHANGES"
 
 [[issues]]
-severity = "important"
+severity = "critical"
 file = "REVIEW_INSTRUCTIONS.md"
 line = 1
-title = "Remove temporary artifact"
-description = "The file `REVIEW_INSTRUCTIONS.md` appears to be an auto-generated artifact from the agent's feedback loop and should not be included in the source control."
-suggestion = "Delete this file from the PR."
+title = "Temporary artifact committed to repository"
+description = "The file `REVIEW_INSTRUCTIONS.md` appears to be a generated artifact from the review agent containing a 'REQUEST_CHANGES' decision. This file should not be committed to the repository source."
+suggestion = "Remove `REVIEW_INSTRUCTIONS.md` from the PR."
+
+[[issues]]
+severity = "important"
+file = ".github/workflows/claude-code-implement.yml"
+line = 66
+title = "Unpinned dependency installation in CI"
+description = "Using `@latest` for `@anthropic-ai/claude-agent-sdk` in a privileged workflow creates a risk of supply chain attacks or breakage from breaking changes in the SDK. CI environments should use pinned versions."
+suggestion = "Pin the version of `@anthropic-ai/claude-agent-sdk` (e.g., `0.2.0`) and ideally use `npm ci` with a lockfile if possible, or at least a specific version number."
+
+[[issues]]
+severity = "important"
+file = ".github/scripts/claude-code-implement.cjs"
+line = 30
+title = "Brittle manual 'exports' parsing"
+description = "The script attempts to manually parse `package.json` exports but fails to handle top-level conditional exports (e.g., `{ \"import\": \"...\" }`) which are valid and common. This logic is fragile and may break with SDK updates."
+suggestion = "If the environment allows, rely on standard Node.js resolution by ensuring the SDK is installed in a discoverable location, or improve the parsing logic to handle top-level export conditions."
 
 [[issues]]
 severity = "suggestion"
 file = ".github/workflows/claude-code-implement.yml"
-line = 95
-title = "Remove verbose debug logging"
-description = "The workflow retains verbose debugging commands (`ls -R $SDK_PATH`, `cat ...`) which clutter the CI output."
-suggestion = "Remove the file listing and file content printing commands from the 'Run Implementation' step."
+line = 71
+title = "Redundant SDK installation"
+description = "The SDK is installed in both `/tmp/claude-sdk` and `.github/scripts`. This increases build time and complexity. The script seems to prefer `SDK_PATH` (/tmp), making the second install potentially unnecessary."
+suggestion = "Remove the second installation step in `.github/scripts` if the script relies on `SDK_PATH`."
 
 [[issues]]
 severity = "suggestion"
 file = ".github/scripts/claude-code-implement.cjs"
-line = 30
-title = "Brittle manual module resolution"
-description = "The script manually parses `package.json` to resolve entry points (`exports`, `main`, `bin`). This is fragile compared to standard Node.js resolution. While necessary if the upstream package is malformed (missing main/exports), it incurs maintenance risk."
-suggestion = "Ensure this manual resolution is strictly necessary. If the SDK is properly packaged, setting `NODE_PATH` to include the installation directory should allow standard `import()` to work."
-
-[[issues]]
-severity = "suggestion"
-file = ".github/workflows/gemini-pr-review-plus.yml"
-line = 12
-title = "Potential failure on non-PR events"
-description = "The workflow uses `github.head_ref` for git operations. This variable is empty on `workflow_dispatch` or `push` events, which would cause the `git fetch` command to fail."
-suggestion = "If this workflow is triggered by events other than `pull_request`, ensure a fallback (like `github.ref_name`) is used."
+line = 1
+title = "Redundant 'fs' import"
+description = "`fs` is required both partially (destructured) and fully on lines 1 and 4."
+suggestion = "Consolidate imports: `const fs = require('fs');` and use `fs.existsSync`, or destructure what you need."
 ```
