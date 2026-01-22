@@ -232,22 +232,17 @@ jobs:
         with:
           node-version: '20'
 
-      # Security: Install SDK in isolated temp directory with --ignore-scripts
+      # Security: Install SDK where the trusted script can find it
       # Pin version to prevent supply chain attacks from upstream updates
-      - name: Install Claude Code SDK (isolated, pinned)
+      - name: Install Claude Code SDK
         run: |
-          mkdir -p /tmp/claude-sdk
-          cd /tmp/claude-sdk
+          cd ${{ github.workspace }}/_trusted_scripts/.github/scripts
           npm init -y
           npm install @anthropic-ai/claude-code@0.2.57 --ignore-scripts
+          # Verify module is accessible
+          ls -la node_modules/@anthropic-ai/claude-code/package.json
         env:
           NODE_ENV: production
-
-      # Make SDK available where the trusted script expects it
-      # The script from default branch uses standard require(), so we symlink node_modules
-      - name: Link SDK to trusted scripts location
-        run: |
-          ln -s /tmp/claude-sdk/node_modules ${{ github.workspace }}/_trusted_scripts/.github/scripts/node_modules
 
       - name: Read review instructions
         id: instructions
@@ -271,12 +266,9 @@ jobs:
           INSTRUCTIONS_FOUND: ${{ steps.instructions.outputs.found }}
           # Set working directory for Claude Code agent to the PR workspace
           CLAUDE_CWD: ${{ github.workspace }}/pr-workspace
-          # SDK module path (installed in isolated temp directory)
-          SDK_PATH: /tmp/claude-sdk
         run: |
           # Security: Execute trusted script from default branch, not PR branch
-          # Script uses .cjs extension to enforce CommonJS module system
-          # SDK_PATH tells the script where to find the Claude Code SDK module
+          # SDK is installed in the same directory as the script
           node ${{ github.workspace }}/_trusted_scripts/.github/scripts/claude-code-implement.cjs
 
       - name: Configure git
