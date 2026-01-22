@@ -24,7 +24,30 @@ jobs:
       !contains(github.actor, '[bot]')
 
     steps:
+      - name: 🔐 Check user permissions
+        id: check-perms
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Check if the PR author has write access or is a collaborator
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          REPO="${{ github.repository }}"
+
+          # Check user permission level (admin, write, read, none)
+          PERMISSION=$(gh api repos/"$REPO"/collaborators/"$AUTHOR"/permission --jq '.permission' 2>/dev/null || echo "none")
+
+          if [[ "$PERMISSION" == "admin" || "$PERMISSION" == "write" ]]; then
+            echo "::notice::User $AUTHOR has $PERMISSION access - proceeding with review"
+            echo "skip=false" >> $GITHUB_OUTPUT
+          else
+            echo "::warning::User $AUTHOR has insufficient permissions ($PERMISSION) - skipping AI review for security"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: 🔑 Check for API key
+        if: steps.check-perms.outputs.skip != 'true'
         id: check-key
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -38,7 +61,7 @@ jobs:
           fi
 
       - name: 📥 Checkout code
-        if: steps.check-key.outputs.skip != 'true'
+        if: steps.check-perms.outputs.skip != 'true' && steps.check-key.outputs.skip != 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -46,21 +69,21 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
 
       - name: 🐍 Set up Python
-        if: steps.check-key.outputs.skip != 'true'
+        if: steps.check-perms.outputs.skip != 'true' && steps.check-key.outputs.skip != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: 'pip'
 
       - name: 📦 Install deps
-        if: steps.check-key.outputs.skip != 'true'
+        if: steps.check-perms.outputs.skip != 'true' && steps.check-key.outputs.skip != 'true'
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
           pip install "google-genai>=1.51.0"
 
       - name: 🧾 Collect PR context
-        if: steps.check-key.outputs.skip != 'true'
+        if: steps.check-perms.outputs.skip != 'true' && steps.check-key.outputs.skip != 'true'
         id: ctx
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
@@ -101,7 +124,7 @@ jobs:
           git log "$BASE...$HEAD" --format="%(trailers:key=Agent-Note,valueonly)" | grep -v '^$' > /tmp/pr/agent_notes.txt || true
 
       - name: 🤖 Run Gemini Quality Review
-        if: steps.check-key.outputs.skip != 'true'
+        if: steps.check-perms.outputs.skip != 'true' && steps.check-key.outputs.skip != 'true'
         id: gemini
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -115,7 +138,7 @@ jobs:
 
           PR_DIR = Path("/tmp/pr")
           client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-          MODEL = "gemini-3-pro-preview"
+          MODEL = "gemini-2.0-flash-exp"
 
           def read(p: Path) -> str:
             try: 
@@ -225,7 +248,8 @@ jobs:
           TASK: Provide a QUALITY-focused review (bugs, correctness, types, security).
           IMPORTANT: Review any changes to lockfiles (package-lock.json/yarn.lock) for malicious supply chain injections.
 
-          OUTPUT: Valid JSON (no markdown fence).
+          OUTPUT: Valid JSON in a markdown code fence.
+          ```json
           {{
             "review": {{
               "summary": "Brief overall summary",
@@ -243,6 +267,7 @@ jobs:
               }}
             ]
           }}
+          ```
 
           IMPORTANT: Number each issue with sequential id starting from 1.
           """
@@ -261,10 +286,22 @@ jobs:
                 if content.startswith(('{', '[')):
                    return content
 
-             # If no markdown fence found, log warning and return empty
-             # The LLM is instructed to provide JSON in code fences
-             print("Warning: JSON markdown fence not found in LLM response", file=sys.stderr)
-             print("Response preview:", t[:200], file=sys.stderr)
+             # Fallback: Try to extract raw JSON object from response
+             # This handles cases where the LLM didn't use markdown fences
+             m = re.search(r'(\{.*\})', t, re.DOTALL)
+             if m:
+                content = m.group(1).strip()
+                # Try to validate it's parseable JSON
+                try:
+                   json.loads(content)
+                   print("Warning: Found raw JSON without markdown fence", file=sys.stderr)
+                   return content
+                except json.JSONDecodeError:
+                   pass
+
+             # If no valid JSON found, log error and return empty object
+             print("Error: No valid JSON found in LLM response", file=sys.stderr)
+             print("Response preview:", t[:500], file=sys.stderr)
              return "{}"
 
           q_data = None
@@ -322,7 +359,7 @@ jobs:
           PY
 
       - name: 🚀 Push Instructions to Branch
-        if: steps.check-key.outputs.skip != 'true' && steps.gemini.outputs.has_feedback == 'true'
+        if: steps.check-perms.outputs.skip != 'true' && steps.check-key.outputs.skip != 'true' && steps.gemini.outputs.has_feedback == 'true'
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -340,7 +377,7 @@ jobs:
           git push
 
       - name: 🧹 Cleanup stale instructions
-        if: steps.check-key.outputs.skip != 'true' && steps.gemini.outputs.decision == 'APPROVE'
+        if: steps.check-perms.outputs.skip != 'true' && steps.check-key.outputs.skip != 'true' && steps.gemini.outputs.decision == 'APPROVE'
         run: |
           set -euo pipefail
           # Fetch latest remote state first
@@ -357,7 +394,7 @@ jobs:
           fi
 
       - name: 💬 Post PR comment
-        if: steps.check-key.outputs.skip != 'true'
+        if: steps.check-perms.outputs.skip != 'true' && steps.check-key.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
@@ -366,7 +403,7 @@ jobs:
           gh pr comment "$PR_NUMBER" --body-file /tmp/pr/comment.md || echo "Comment failed"
 
       - name: 📱 Telegram notification
-        if: steps.check-key.outputs.skip != 'true' && always()
+        if: steps.check-perms.outputs.skip != 'true' && steps.check-key.outputs.skip != 'true' && always()
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
