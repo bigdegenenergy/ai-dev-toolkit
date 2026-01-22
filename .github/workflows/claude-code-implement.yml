@@ -292,17 +292,18 @@ jobs:
 
       - name: Implement changes with Claude Code
         id: implement
-        working-directory: /tmp/claude-sdk
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           REVIEW_INSTRUCTIONS: ${{ steps.instructions.outputs.content }}
           INSTRUCTIONS_FOUND: ${{ steps.instructions.outputs.found }}
           # Set working directory for Claude Code agent to the PR workspace
           CLAUDE_CWD: ${{ github.workspace }}/pr-workspace
+          # SDK module path (installed in isolated temp directory)
+          SDK_PATH: /tmp/claude-sdk
         run: |
           # Security: Execute trusted script from default branch, not PR branch
           # Script uses .cjs extension to enforce CommonJS module system
-          # Run from SDK directory so node_modules are found, but agent works in PR workspace
+          # SDK_PATH tells the script where to find the Claude Code SDK module
           node ${{ github.workspace }}/_trusted_scripts/.github/scripts/claude-code-implement.cjs
 
       - name: Configure git

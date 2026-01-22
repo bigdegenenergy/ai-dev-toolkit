@@ -9,9 +9,15 @@
  * if provided, and implements the changes.
  */
 
-const { query } = require("@anthropic-ai/claude-code");
 const fs = require("fs");
 const path = require("path");
+
+// Module resolution: SDK is installed in /tmp/claude-sdk, not where this script lives
+// Use explicit path since NODE_PATH doesn't work reliably with CommonJS require()
+const SDK_PATH = process.env.SDK_PATH || "/tmp/claude-sdk";
+const { query } = require(
+  path.join(SDK_PATH, "node_modules", "@anthropic-ai", "claude-code"),
+);
 
 async function main() {
   const isAccept = process.env.IS_ACCEPT === "true";
