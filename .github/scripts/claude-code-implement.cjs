@@ -2,14 +2,14 @@
 
 /**
  * Claude Code Implementation Script
- * @version 1.4.0
+ * @version 2.0.0
  *
- * This script uses the Claude Code SDK to implement PR review suggestions.
+ * This script uses the Claude Agent SDK to implement PR review suggestions.
  * It reads REVIEW_INSTRUCTIONS.md (pushed by Gemini), applies user modifications
  * if provided, and implements the changes.
  *
- * Note: The SDK is an ES Module, so we use dynamic import() with a file URL
- * because bare specifier imports don't work with NODE_PATH in dynamic import.
+ * Note: The SDK package is @anthropic-ai/claude-agent-sdk (not claude-code).
+ * We use dynamic import() with a file URL for ESM compatibility.
  */
 
 const fs = require("fs");
@@ -18,77 +18,45 @@ const { pathToFileURL } = require("url");
 
 async function main() {
   // Dynamic import for ESM package - construct full file URL
-  // NODE_PATH doesn't work with dynamic import(), so we resolve the path manually
   const SDK_PATH = process.env.SDK_PATH || "/tmp/claude-sdk";
   const sdkPkgPath = path.join(
     SDK_PATH,
     "node_modules",
     "@anthropic-ai",
-    "claude-code",
+    "claude-agent-sdk",
   );
 
   // Read package.json to find the correct entry point
   const pkgJsonPath = path.join(sdkPkgPath, "package.json");
   const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
 
-  // Resolve the entry point from package.json
-  // Priority: exports > main > bin (first entry) > cli.js (SDK-specific fallback)
-  let entryPoint;
+  // Resolve the entry point from package.json exports or main
+  let entryPoint = pkgJson.main || "index.js";
   if (pkgJson.exports) {
-    // Handle exports field - can be string or object
     if (typeof pkgJson.exports === "string") {
       entryPoint = pkgJson.exports;
     } else if (pkgJson.exports["."]?.import) {
       entryPoint = pkgJson.exports["."].import;
     } else if (pkgJson.exports["."]?.default) {
       entryPoint = pkgJson.exports["."].default;
-    } else if (pkgJson.exports.import) {
-      entryPoint = pkgJson.exports.import;
-    } else if (pkgJson.exports.default) {
-      entryPoint = pkgJson.exports.default;
+    } else if (pkgJson.exports["."]?.require) {
+      entryPoint = pkgJson.exports["."].require;
     }
   }
-  // Fallback chain: main > first bin entry > cli.js (SDK bundles everything in cli.js)
-  if (!entryPoint) {
-    entryPoint = pkgJson.main;
-  }
-  if (!entryPoint && pkgJson.bin) {
-    // Get first bin entry (SDK uses cli.js)
-    const binEntries = Object.values(pkgJson.bin);
-    if (binEntries.length > 0) {
-      entryPoint = binEntries[0];
-    }
-  }
-  entryPoint = entryPoint || "cli.js";
 
   const modulePath = path.join(sdkPkgPath, entryPoint);
   const moduleUrl = pathToFileURL(modulePath).href;
 
   console.log(`Loading SDK from: ${moduleUrl}`);
   const sdk = await import(moduleUrl);
-
-  // Debug: Log what the SDK exports to find the correct function
   console.log("SDK exports:", Object.keys(sdk));
-  if (sdk.default) {
-    console.log("SDK default export keys:", Object.keys(sdk.default));
-  }
 
-  // Try to find the query function - it might be in different places
-  const query =
-    sdk.query ||
-    sdk.default?.query ||
-    (typeof sdk.default === "function" ? sdk.default : null);
+  // Get the query function
+  const query = sdk.query || sdk.default?.query;
 
   if (!query) {
-    console.error("Available SDK exports:", JSON.stringify(Object.keys(sdk)));
-    if (sdk.default) {
-      console.error(
-        "Available default exports:",
-        JSON.stringify(Object.keys(sdk.default)),
-      );
-    }
     throw new Error(
-      "Could not find query function in SDK. Check the exports above.",
+      `Could not find query function. Available exports: ${Object.keys(sdk).join(", ")}`,
     );
   }
   const isAccept = process.env.IS_ACCEPT === "true";
