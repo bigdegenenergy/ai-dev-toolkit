@@ -1,5 +1,5 @@
 name: Claude Code Implement Changes
-# Version: 2026-01-22-v2 - Force workflow refresh
+# Version: 2026-01-22-v3 - Use PR branch scripts for workflow_dispatch
 
 on:
   issue_comment:
@@ -218,11 +218,13 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
           path: pr-workspace
 
-      # Security: Then checkout trusted scripts from default branch
-      - name: Checkout trusted scripts from default branch
+      # Security: Checkout trusted scripts
+      # - For issue_comment: ALWAYS use default branch (security against malicious PR code)
+      # - For workflow_dispatch: Use PR branch (allows testing changes to the script itself)
+      - name: Checkout trusted scripts
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.repository.default_branch }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && env.PR_BRANCH || github.event.repository.default_branch }}
           path: _trusted_scripts
           sparse-checkout: |
             .github/scripts
