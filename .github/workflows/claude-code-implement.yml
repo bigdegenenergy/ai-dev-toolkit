@@ -1,5 +1,6 @@
 name: Claude Code Implement Changes
-# Version: 2026-01-22-v6 - Use LLM for intent detection instead of regex
+# Version: 2026-01-22-v7 - Fix bot loop, use LLM for intent detection
+# IMPORTANT: Do not change the Gemini model (gemini-3-pro-preview) - it has been vetted
 
 on:
   issue_comment:
@@ -33,11 +34,15 @@ jobs:
   detect_trigger:
     name: Detect Implementation Trigger
     runs-on: ubuntu-latest
+    # IMPORTANT: Only run for human comments, never for bots
+    # Check both actor and comment user type to prevent loops
     if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' &&
        github.event.issue.pull_request &&
-       !contains(github.actor, '[bot]'))
+       github.event.comment.user.type != 'Bot' &&
+       !contains(github.event.comment.user.login, '[bot]') &&
+       !contains(github.event.comment.user.login, '-bot'))
     outputs:
       should_run: ${{ steps.analyze.outputs.should_run }}
       is_accept: ${{ steps.analyze.outputs.is_accept }}
