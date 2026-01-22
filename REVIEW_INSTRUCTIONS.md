@@ -4,30 +4,30 @@
 
 ```toml
 [review]
-summary = "The changes to the SDK integration logic significantly improve reliability and security by isolating the dependency installation and fixing module resolution. However, the PR mistakenly includes a generated artifact (`REVIEW_INSTRUCTIONS.md`) that must be removed before merging. I also have a correctness concern regarding the order of operations in the git synchronization logic."
+summary = "The PR introduces necessary fixes for the Claude Code integration, specifically improving module resolution, switching to a more reliable command-based trigger (`/accept`), and handling git conflicts in the review workflow. However, the PR incorrectly includes a generated artifact (`REVIEW_INSTRUCTIONS.md`) which must be removed before merging."
 decision = "REQUEST_CHANGES"
 
 [[issues]]
 severity = "important"
 file = "REVIEW_INSTRUCTIONS.md"
 line = 1
-title = "Ephemeral artifact committed to repository"
-description = "The file `REVIEW_INSTRUCTIONS.md` is included in the PR diff. As noted in the file's own content ('This file should be ephemeral and not committed'), this is a runtime artifact intended for agent context and should not be committed to source control."
-suggestion = "Delete `REVIEW_INSTRUCTIONS.md` from this pull request."
-
-[[issues]]
-severity = "important"
-file = ".github/workflows/gemini-pr-review-plus.yml"
-line = 14
-title = "Risk of data loss with `git reset --hard`"
-description = "Replacing `git pull --rebase` with `git reset --hard` ensures a clean state relative to the remote, but it destroys all local uncommitted changes. If the review instructions are generated *before* this command runs (e.g., in a previous step or earlier in the script), they will be deleted before they can be committed."
-suggestion = "Ensure that the content generation for `REVIEW_INSTRUCTIONS.md` occurs *after* the `git reset --hard` command in the workflow script."
+title = "Generated artifact committed to repository"
+description = "The file `REVIEW_INSTRUCTIONS.md` appears to be a temporary or generated file containing specific instructions for an agent run. It should not be committed to the source control history of the main branch."
+suggestion = "Remove this file from the PR."
 
 [[issues]]
 severity = "suggestion"
 file = ".github/scripts/claude-code-implement.cjs"
+line = 14
+title = "Brittle module resolution"
+description = "Constructing paths directly into `node_modules` using `path.join(sdkPath, 'node_modules', ...)` is brittle. It assumes a specific folder structure that might change with different package managers or hoisting behaviors."
+suggestion = "Consider using `require.resolve('@anthropic-ai/claude-code', { paths: [sdkPath] })` to robustly locate the package entry point."
+
+[[issues]]
+severity = "suggestion"
+file = ".github/workflows/gemini-pr-review-plus.yml"
 line = 1
-title = "Hardcoded fallback path assumption"
-description = "The script defaults `SDK_PATH` to `/tmp/claude-sdk`. While valid for the CI environment, this might be confusing for local debugging or if the CI environment changes. Consider verifying the path exists before requiring it to provide a helpful error message."
-suggestion = "Add a check: `if (!require('fs').existsSync(sdkPath)) { console.error('SDK not found at ' + sdkPath); process.exit(1); }` before the require call."
+title = "Potential data loss with git reset strategy"
+description = "Replacing `git pull --rebase` with `git reset --hard` effectively resolves merge conflicts for the instructions file but will wipe out any other uncommitted changes in the workspace. While acceptable for this specific atomic operation, be cautious if this job evolves to generate other artifacts."
+suggestion = "No immediate change needed, but ensure this step remains isolated to avoid accidental data loss of other artifacts."
 ```
