@@ -2,7 +2,7 @@
 
 /**
  * Claude Code Implementation Script
- * @version 1.3.0
+ * @version 1.4.0
  *
  * This script uses the Claude Code SDK to implement PR review suggestions.
  * It reads REVIEW_INSTRUCTIONS.md (pushed by Gemini), applies user modifications
@@ -66,7 +66,31 @@ async function main() {
 
   console.log(`Loading SDK from: ${moduleUrl}`);
   const sdk = await import(moduleUrl);
-  const { query } = sdk;
+
+  // Debug: Log what the SDK exports to find the correct function
+  console.log("SDK exports:", Object.keys(sdk));
+  if (sdk.default) {
+    console.log("SDK default export keys:", Object.keys(sdk.default));
+  }
+
+  // Try to find the query function - it might be in different places
+  const query =
+    sdk.query ||
+    sdk.default?.query ||
+    (typeof sdk.default === "function" ? sdk.default : null);
+
+  if (!query) {
+    console.error("Available SDK exports:", JSON.stringify(Object.keys(sdk)));
+    if (sdk.default) {
+      console.error(
+        "Available default exports:",
+        JSON.stringify(Object.keys(sdk.default)),
+      );
+    }
+    throw new Error(
+      "Could not find query function in SDK. Check the exports above.",
+    );
+  }
   const isAccept = process.env.IS_ACCEPT === "true";
   const userInstructions = process.env.USER_INSTRUCTIONS || "";
   const instructionsFound = process.env.INSTRUCTIONS_FOUND === "true";
