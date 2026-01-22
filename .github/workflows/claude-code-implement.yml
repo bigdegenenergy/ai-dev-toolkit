@@ -268,7 +268,8 @@ jobs:
           NODE_PATH: /tmp/claude-sdk/node_modules
         run: |
           # Security: Execute trusted script from default branch, not PR branch
-          node ${{ github.workspace }}/_trusted_scripts/.github/scripts/claude-code-implement.js
+          # Script uses .cjs extension to enforce CommonJS module system
+          node ${{ github.workspace }}/_trusted_scripts/.github/scripts/claude-code-implement.cjs
 
       - name: Configure git
         working-directory: pr-workspace

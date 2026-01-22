@@ -26,17 +26,21 @@ jobs:
           script: |
             // Get the workflow run to find associated PR
             const runId = context.payload.workflow_run.id;
+            const headBranch = context.payload.workflow_run.head_branch;
+
+            // Use head_repository owner to support PRs from forks
+            const headOwner = context.payload.workflow_run.head_repository?.owner?.login || context.repo.owner;
 
             // List pull requests associated with this workflow run
             const { data: prs } = await github.rest.pulls.list({
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
-              head: `${context.repo.owner}:${context.payload.workflow_run.head_branch}`
+              head: `${headOwner}:${headBranch}`
             });
 
             if (prs.length === 0) {
-              console.log('No open PR found for this workflow run');
+              console.log(`No open PR found for ${headOwner}:${headBranch}`);
               core.setOutput('found', 'false');
               return;
             }
