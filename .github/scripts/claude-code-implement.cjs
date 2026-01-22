@@ -41,11 +41,15 @@ async function main() {
 
   let summaryParts = [];
 
+  // Use CLAUDE_CWD if set (for when script runs from SDK dir), otherwise cwd
+  const workingDir = process.env.CLAUDE_CWD || process.cwd();
+  console.log(`Working directory: ${workingDir}`);
+
   try {
     for await (const message of query({
       prompt,
       options: {
-        cwd: process.cwd(),
+        cwd: workingDir,
         // Security: No Bash tool to prevent arbitrary command execution
         // Agent can only read, search, and edit files - not run shell commands
         allowedTools: ["Read", "Edit", "Write", "Glob", "Grep", "TodoWrite"],

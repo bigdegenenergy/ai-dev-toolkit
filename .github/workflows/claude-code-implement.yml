@@ -121,7 +121,7 @@ jobs:
             }
 
             // Check for 👍 reaction on Claude Code prompt comment
-            const { data: comments } = await github.rest.issues.listComments({
+            const { data: allComments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
@@ -129,7 +129,7 @@ jobs:
             });
 
             // Find the Claude Code prompt comment
-            const promptComment = comments.find(c =>
+            const promptComment = allComments.find(c =>
               c.body && c.body.includes('## 🔄 Claude Code Integration') &&
               c.body.includes('<!-- claude-code-prompt:')
             );
@@ -142,39 +142,27 @@ jobs:
                 comment_id: promptComment.id
               });
 
-              // Check for 👍 (+1) reaction from an authorized user
-              const thumbsUp = reactions.find(r =>
-                r.content === '+1' &&
-                ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(r.user?.association || '')
-              );
-
-              // Also check if reactor is the current actor (simpler check)
-              const actorThumbsUp = reactions.find(r =>
+              // Check for 👍 (+1) reaction from the current actor
+              // Security: actor already passed author_association check above
+              const actorReacted = reactions.find(r =>
                 r.content === '+1' &&
                 r.user?.login === context.actor
               );
 
-              if (thumbsUp || actorThumbsUp) {
+              if (actorReacted) {
                 core.setOutput('should_run', 'true');
                 core.setOutput('is_accept', 'true');
                 core.setOutput('user_instructions', '');
                 core.setOutput('pr_number', prNumber);
                 core.setOutput('pr_branch', pr.head.ref);
-                console.log(`👍 reaction detected on Claude Code prompt for PR #${prNumber}`);
+                console.log(`👍 reaction from authorized user ${context.actor} detected on PR #${prNumber}`);
                 return;
               }
             }
 
             // Check if this is a reply to a Claude Code prompt
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              per_page: 100
-            });
-
             // Find the most recent Claude Code prompt
-            const promptComments = comments.filter(c =>
+            const promptComments = allComments.filter(c =>
               c.body && c.body.includes('## 🔄 Claude Code Integration') &&
               c.body.includes('<!-- claude-code-prompt:')
             );
@@ -186,8 +174,8 @@ jobs:
             }
 
             const latestPrompt = promptComments[promptComments.length - 1];
-            const promptIndex = comments.findIndex(c => c.id === latestPrompt.id);
-            const currentCommentIndex = comments.findIndex(c => c.id === comment.id);
+            const promptIndex = allComments.findIndex(c => c.id === latestPrompt.id);
+            const currentCommentIndex = allComments.findIndex(c => c.id === comment.id);
 
             // Check if this comment appears after the prompt (could be a reply)
             if (currentCommentIndex > promptIndex) {
@@ -304,16 +292,17 @@ jobs:
 
       - name: Implement changes with Claude Code
         id: implement
-        working-directory: pr-workspace
+        working-directory: /tmp/claude-sdk
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           REVIEW_INSTRUCTIONS: ${{ steps.instructions.outputs.content }}
           INSTRUCTIONS_FOUND: ${{ steps.instructions.outputs.found }}
-          # Point to isolated SDK installation
-          NODE_PATH: /tmp/claude-sdk/node_modules
+          # Set working directory for Claude Code agent to the PR workspace
+          CLAUDE_CWD: ${{ github.workspace }}/pr-workspace
         run: |
           # Security: Execute trusted script from default branch, not PR branch
           # Script uses .cjs extension to enforce CommonJS module system
+          # Run from SDK directory so node_modules are found, but agent works in PR workspace
           node ${{ github.workspace }}/_trusted_scripts/.github/scripts/claude-code-implement.cjs
 
       - name: Configure git
