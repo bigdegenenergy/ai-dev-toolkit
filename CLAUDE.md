@@ -413,22 +413,27 @@ The PR review workflow uses a git-native approach for agent-to-agent communicati
 
 5. **Re-Review**: Gemini automatically reviews the new commits and the cycle continues
 
-### Claude Code Integration Commands
+### Claude Code Integration (Natural Language)
 
-| Command             | Effect                                                   |
-| ------------------- | -------------------------------------------------------- |
-| `accept`            | Accept and implement all suggestions as-is               |
-| `yes` / `okay`      | Same as `accept`                                         |
-| `approved` / `lgtm` | Same as `accept`                                         |
-| Reply comment       | Provide custom instructions for selective implementation |
+The implementation workflow uses Claude Haiku to understand your intent from natural language comments. Just reply to the Claude Code prompt with what you want to do.
 
-**Example replies:**
+**Examples of comments that trigger implementation:**
 
 - `Accept all suggestions`
+- `Yes, implement these`
+- `Go ahead and fix everything`
 - `Ignore #2, implement the rest`
-- `For the SQL injection issue, use parameterized queries instead`
-- `Only fix security issues, skip style suggestions`
-- `Implement but use try-catch for error handling`
+- `Only fix the security issues, skip the style suggestions`
+- `For the SQL injection, use parameterized queries instead`
+
+**Examples of comments that DON'T trigger implementation:**
+
+- `What does suggestion #2 mean?`
+- `I'm not sure about this approach`
+- `Let me think about it`
+- General discussion or questions
+
+The LLM analyzes your comment in context and determines if you're requesting implementation, and extracts any specific instructions you provide.
 
 ### Review Instructions File
 
