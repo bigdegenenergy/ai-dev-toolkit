@@ -260,13 +260,12 @@ jobs:
                 # Verify it starts with { or [
                 if content.startswith(('{', '[')):
                    return content
-             # Try to find first complete JSON object with non-greedy match
-             # Look for { followed by content, ending at first } that balances
-             m = re.search(r"(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})", t, re.DOTALL)
-             if m: return m.group(1).strip()
-             # Fallback: greedy match as last resort
-             m = re.search(r"(\{.*\})", t, re.DOTALL)
-             return m.group(1).strip() if m else t.strip()
+
+             # If no markdown fence found, log warning and return empty
+             # The LLM is instructed to provide JSON in code fences
+             print("Warning: JSON markdown fence not found in LLM response", file=sys.stderr)
+             print("Response preview:", t[:200], file=sys.stderr)
+             return "{}"
 
           q_data = None
           try: q_data = json.loads(extract_json(quality_text))
