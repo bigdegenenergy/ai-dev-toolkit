@@ -1,4 +1,5 @@
 name: Claude Code Implement Changes
+# Version: 2026-01-22-v2 - Force workflow refresh
 
 on:
   issue_comment:
