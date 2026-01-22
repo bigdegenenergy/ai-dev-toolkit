@@ -4,30 +4,30 @@
 
 ```toml
 [review]
-summary = "The PR introduces significant improvements to the AI agent workflows, including better SDK isolation and a clearer interaction model (/accept command). However, there is a blocking bug in the module resolution logic that will cause the implementation script to fail, and a generated review artifact has been accidentally committed."
+summary = "The changes to the SDK integration logic significantly improve reliability and security by isolating the dependency installation and fixing module resolution. However, the PR mistakenly includes a generated artifact (`REVIEW_INSTRUCTIONS.md`) that must be removed before merging. I also have a correctness concern regarding the order of operations in the git synchronization logic."
 decision = "REQUEST_CHANGES"
-
-[[issues]]
-severity = "critical"
-file = ".github/scripts/claude-code-implement.cjs"
-line = 1
-title = "Broken module resolution path"
-description = "The script attempts to load the SDK using `path.join(sdkPath, '@anthropic-ai/claude-code')`. In the workflow, `SDK_PATH` is set to `_trusted_scripts/.github/scripts`. `npm install` creates a `node_modules` directory inside that path. Therefore, the constructed path `_trusted_scripts/.github/scripts/@anthropic-ai/claude-code` will not exist; it needs to include `node_modules`. This will cause the script to crash with `MODULE_NOT_FOUND`."
-suggestion = "Update the require call to include `node_modules`: `require(path.join(sdkPath, 'node_modules', '@anthropic-ai/claude-code'))`."
 
 [[issues]]
 severity = "important"
 file = "REVIEW_INSTRUCTIONS.md"
 line = 1
-title = "Transient artifact included in PR"
-description = "The `REVIEW_INSTRUCTIONS.md` file appears to be a generated artifact containing the output of a review run. This file should be ephemeral and not committed to the repository source."
-suggestion = "Remove `REVIEW_INSTRUCTIONS.md` from the PR."
+title = "Ephemeral artifact committed to repository"
+description = "The file `REVIEW_INSTRUCTIONS.md` is included in the PR diff. As noted in the file's own content ('This file should be ephemeral and not committed'), this is a runtime artifact intended for agent context and should not be committed to source control."
+suggestion = "Delete `REVIEW_INSTRUCTIONS.md` from this pull request."
+
+[[issues]]
+severity = "important"
+file = ".github/workflows/gemini-pr-review-plus.yml"
+line = 14
+title = "Risk of data loss with `git reset --hard`"
+description = "Replacing `git pull --rebase` with `git reset --hard` ensures a clean state relative to the remote, but it destroys all local uncommitted changes. If the review instructions are generated *before* this command runs (e.g., in a previous step or earlier in the script), they will be deleted before they can be committed."
+suggestion = "Ensure that the content generation for `REVIEW_INSTRUCTIONS.md` occurs *after* the `git reset --hard` command in the workflow script."
 
 [[issues]]
 severity = "suggestion"
-file = ".github/workflows/gemini-pr-review-plus.yml"
+file = ".github/scripts/claude-code-implement.cjs"
 line = 1
-title = "Destructive git reset strategy"
-description = "Replacing `git pull --rebase` with `git reset --hard origin/${{ github.head_ref }}` effectively discards any local changes in the runner workspace. While this prevents merge conflicts, ensure that the generation of `REVIEW_INSTRUCTIONS.md` (or any other artifacts intended to be committed) happens *after* this git reset step within the job execution order."
-suggestion = "Verify the workflow step order to ensure the file generation step occurs after the git reset."
+title = "Hardcoded fallback path assumption"
+description = "The script defaults `SDK_PATH` to `/tmp/claude-sdk`. While valid for the CI environment, this might be confusing for local debugging or if the CI environment changes. Consider verifying the path exists before requiring it to provide a helpful error message."
+suggestion = "Add a check: `if (!require('fs').existsSync(sdkPath)) { console.error('SDK not found at ' + sdkPath); process.exit(1); }` before the require call."
 ```
