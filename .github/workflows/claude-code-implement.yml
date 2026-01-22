@@ -243,7 +243,7 @@ jobs:
           mkdir -p /tmp/claude-sdk
           cd /tmp/claude-sdk
           npm init -y
-          npm install @anthropic-ai/claude-agent-sdk --ignore-scripts
+          npm install @anthropic-ai/claude-agent-sdk@0.2.0 --ignore-scripts
           echo "SDK installed at /tmp/claude-sdk/node_modules"
           ls -la node_modules/@anthropic-ai/claude-agent-sdk/package.json
         env:

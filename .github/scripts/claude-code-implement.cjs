@@ -41,6 +41,15 @@ async function main() {
       entryPoint = pkgJson.exports["."].default;
     } else if (pkgJson.exports["."]?.require) {
       entryPoint = pkgJson.exports["."].require;
+    } else if (typeof pkgJson.exports["."] === "string") {
+      // Handle top-level export as string: { ".": "./dist/index.js" }
+      entryPoint = pkgJson.exports["."];
+    } else if (typeof pkgJson.exports === "object" && pkgJson.exports.import) {
+      // Handle top-level conditional exports: { "import": "./dist/index.js" }
+      entryPoint = pkgJson.exports.import;
+    } else if (typeof pkgJson.exports === "object" && pkgJson.exports.default) {
+      // Handle top-level default export: { "default": "./dist/index.js" }
+      entryPoint = pkgJson.exports.default;
     }
   }
 
