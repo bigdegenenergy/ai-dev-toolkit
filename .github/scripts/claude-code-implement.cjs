@@ -2,7 +2,7 @@
 
 /**
  * Claude Code Implementation Script
- * @version 1.2.0
+ * @version 1.3.0
  *
  * This script uses the Claude Code SDK to implement PR review suggestions.
  * It reads REVIEW_INSTRUCTIONS.md (pushed by Gemini), applies user modifications
@@ -31,7 +31,8 @@ async function main() {
   const pkgJsonPath = path.join(sdkPkgPath, "package.json");
   const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
 
-  // Resolve the entry point from package.json exports or main
+  // Resolve the entry point from package.json
+  // Priority: exports > main > bin (first entry) > cli.js (SDK-specific fallback)
   let entryPoint;
   if (pkgJson.exports) {
     // Handle exports field - can be string or object
@@ -47,7 +48,18 @@ async function main() {
       entryPoint = pkgJson.exports.default;
     }
   }
-  entryPoint = entryPoint || pkgJson.main || "index.js";
+  // Fallback chain: main > first bin entry > cli.js (SDK bundles everything in cli.js)
+  if (!entryPoint) {
+    entryPoint = pkgJson.main;
+  }
+  if (!entryPoint && pkgJson.bin) {
+    // Get first bin entry (SDK uses cli.js)
+    const binEntries = Object.values(pkgJson.bin);
+    if (binEntries.length > 0) {
+      entryPoint = binEntries[0];
+    }
+  }
+  entryPoint = entryPoint || "cli.js";
 
   const modulePath = path.join(sdkPkgPath, entryPoint);
   const moduleUrl = pathToFileURL(modulePath).href;
