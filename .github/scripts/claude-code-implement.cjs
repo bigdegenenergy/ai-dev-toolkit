@@ -2,24 +2,21 @@
 
 /**
  * Claude Code Implementation Script
- * @version 1.0.0
+ * @version 1.1.0
  *
  * This script uses the Claude Code SDK to implement PR review suggestions.
  * It reads REVIEW_INSTRUCTIONS.md (pushed by Gemini), applies user modifications
  * if provided, and implements the changes.
+ *
+ * Note: The SDK is an ES Module, so we use dynamic import() instead of require()
  */
 
 const fs = require("fs");
 const path = require("path");
 
-// Module resolution: SDK is installed in /tmp/claude-sdk, not where this script lives
-// Use explicit path since NODE_PATH doesn't work reliably with CommonJS require()
-const SDK_PATH = process.env.SDK_PATH || "/tmp/claude-sdk";
-const { query } = require(
-  path.join(SDK_PATH, "node_modules", "@anthropic-ai", "claude-code"),
-);
-
 async function main() {
+  // Dynamic import for ESM package - must be inside async function
+  const { query } = await import("@anthropic-ai/claude-code");
   const isAccept = process.env.IS_ACCEPT === "true";
   const userInstructions = process.env.USER_INSTRUCTIONS || "";
   const instructionsFound = process.env.INSTRUCTIONS_FOUND === "true";
