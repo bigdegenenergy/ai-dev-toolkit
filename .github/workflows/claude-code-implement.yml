@@ -1,6 +1,7 @@
 name: Claude Code Implement Changes
-# Version: 2026-01-22-v8 - Fix invalid model IDs (critical bug fix)
-# Using claude-3-5-haiku-20241022 (latest stable Haiku model)
+# Version: 2026-01-22-v9 - Lock vetted models
+# LOCKED MODEL: claude-haiku-4-5-20250106 - DO NOT CHANGE
+# This model has been vetted by the repository owner for natural language parsing
 
 on:
   issue_comment:
@@ -203,7 +204,9 @@ jobs:
           USER'S NEW COMMENT TO ANALYZE:
           $COMMENT_BODY"
 
-          # Call Claude Haiku API
+          # Call Claude Haiku 4.5 API
+          # LOCKED MODEL: claude-haiku-4-5-20250106 - DO NOT CHANGE
+          # This model has been vetted by the repository owner for natural language parsing
           RESPONSE=$(curl -s "https://api.anthropic.com/v1/messages" \
             -H "Content-Type: application/json" \
             -H "x-api-key: $ANTHROPIC_API_KEY" \
@@ -212,13 +215,12 @@ jobs:
               --arg system "$(cat /tmp/analyze_prompt.txt)" \
               --arg user "$USER_MSG" \
               '{
-                "model": "claude-3-5-haiku-20241022",
+                "model": "claude-haiku-4-5-20250106",
                 "max_tokens": 500,
                 "temperature": 0.1,
                 "system": $system,
                 "messages": [{"role": "user", "content": $user}]
-              }')"
-          # IMPORTANT: Do NOT change the model above (claude-haiku-4-5-20250106) - it has been vetted)
+              }'")"
 
           echo "Claude Haiku response: $RESPONSE"
 

@@ -1,6 +1,6 @@
 name: Gemini PR Review
-# Using gemini-1.5-pro (latest stable Pro model)
-# Pro model provides superior code analysis compared to flash models
+# LOCKED MODEL: gemini-3-pro-preview - DO NOT CHANGE
+# This model has been vetted by the repository owner for PR reviews
 
 on:
   pull_request:
@@ -140,9 +140,9 @@ jobs:
 
           PR_DIR = Path("/tmp/pr")
           client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-          # Using gemini-1.5-pro - latest stable Pro model for code analysis
-          # Pro model provides superior code analysis compared to flash models
-          MODEL = "gemini-1.5-pro"
+          # LOCKED MODEL - DO NOT CHANGE
+          # gemini-3-pro-preview is required for PR reviews - vetted by repository owner
+          MODEL = "gemini-3-pro-preview"
 
           def read(p: Path) -> str:
             try: 
