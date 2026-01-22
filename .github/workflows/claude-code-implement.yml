@@ -120,7 +120,7 @@ jobs:
               return;
             }
 
-            // Check for 👍 reaction on Claude Code prompt comment
+            // Check if this is a reply to a Claude Code prompt
             const { data: allComments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -128,39 +128,6 @@ jobs:
               per_page: 100
             });
 
-            // Find the Claude Code prompt comment
-            const promptComment = allComments.find(c =>
-              c.body && c.body.includes('## 🔄 Claude Code Integration') &&
-              c.body.includes('<!-- claude-code-prompt:')
-            );
-
-            if (promptComment) {
-              // Get reactions on the prompt comment
-              const { data: reactions } = await github.rest.reactions.listForIssueComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: promptComment.id
-              });
-
-              // Check for 👍 (+1) reaction from the current actor
-              // Security: actor already passed author_association check above
-              const actorReacted = reactions.find(r =>
-                r.content === '+1' &&
-                r.user?.login === context.actor
-              );
-
-              if (actorReacted) {
-                core.setOutput('should_run', 'true');
-                core.setOutput('is_accept', 'true');
-                core.setOutput('user_instructions', '');
-                core.setOutput('pr_number', prNumber);
-                core.setOutput('pr_branch', pr.head.ref);
-                console.log(`👍 reaction from authorized user ${context.actor} detected on PR #${prNumber}`);
-                return;
-              }
-            }
-
-            // Check if this is a reply to a Claude Code prompt
             // Find the most recent Claude Code prompt
             const promptComments = allComments.filter(c =>
               c.body && c.body.includes('## 🔄 Claude Code Integration') &&
@@ -275,6 +242,12 @@ jobs:
           npm install @anthropic-ai/claude-code@0.2.57 --ignore-scripts
         env:
           NODE_ENV: production
+
+      # Make SDK available where the trusted script expects it
+      # The script from default branch uses standard require(), so we symlink node_modules
+      - name: Link SDK to trusted scripts location
+        run: |
+          ln -s /tmp/claude-sdk/node_modules ${{ github.workspace }}/_trusted_scripts/.github/scripts/node_modules
 
       - name: Read review instructions
         id: instructions
