@@ -4,30 +4,30 @@
 
 ```toml
 [review]
-summary = "The changes to the Claude Code implementation script properly handle module resolution in the CI environment. However, there is a critical logic error in the Gemini review workflow where it resets the workspace to `main` instead of the PR branch, likely discarding the changes meant to be reviewed. Additionally, the new reaction-based trigger in the Claude workflow has UX and logic flaws regarding event triggering and actor validation."
+summary = "The PR provides useful fixes for the Claude SDK integration (module resolution, variable shadowing) and improves the trigger UX by moving to explicit `/accept` commands. However, the PR inadvertently includes a generated `REVIEW_INSTRUCTIONS.md` file which appears to be a transient artifact that should not be committed. Additionally, the change to use `git reset --hard` in the review workflow reduces robustness against concurrent updates."
 decision = "REQUEST_CHANGES"
 
 [[issues]]
-severity = "critical"
-file = ".github/workflows/gemini-pr-review-plus.yml"
-line = 0
-title = "Incorrect git reset target discards PR changes"
-description = "The command `git reset --hard origin/main` forces the workspace to match the `main` branch. For a PR review workflow, this will discard the changes introduced in the PR (unless the PR branch happens to be `main`). This effectively reverts the workspace to the base state, preventing the agent from reviewing the actual PR code. This pattern appears in two locations (setup and cleanup)."
-suggestion = "Change the reset target to the PR's head branch. Use `git fetch origin ${{ github.head_ref }}` and `git reset --hard origin/${{ github.head_ref }}`."
+severity = "important"
+file = "REVIEW_INSTRUCTIONS.md"
+line = 1
+title = "Transient review artifact included in PR"
+description = "The `REVIEW_INSTRUCTIONS.md` file appears to be a generated report containing specific review feedback for a previous run. Committing this file pollutes the repository history and is the root cause of the merge conflicts mentioned in the PR description."
+suggestion = "Remove `REVIEW_INSTRUCTIONS.md` from the PR. Consider passing review instructions via PR comments or valid ephemeral storage rather than committing them to the source tree."
 
 [[issues]]
 severity = "important"
-file = ".github/workflows/claude-code-implement.yml"
+file = ".github/workflows/gemini-pr-review-plus.yml"
 line = 0
-title = "Reaction trigger logic is ineffective and misleading"
-description = "The logic assumes the workflow runs on `issue_comment` (implied by listing comments and checking context). GitHub Actions does not trigger `issue_comment` workflows when a reaction is added. Therefore, the 'React with 👍' instruction will not trigger the workflow until someone subsequently comments. Furthermore, the check `r.user.login === context.actor` fails if the person triggering the workflow (the commenter) is different from the person who reacted (the approver)."
-suggestion = "Either implement a proper `on: issue_reaction` trigger (handling the event payload correctly) or remove the reaction monitoring logic and instructions, relying instead on the reliable `/accept` slash command."
+title = "Race condition introduced by git reset --hard"
+description = "Replacing `git pull --rebase` with `git fetch` + `git reset --hard` solves the local conflict issue but introduces a race condition. If a user pushes a commit to the PR branch while this workflow is running (between the fetch and the push), the workflow's push will fail because the local history will have diverged from the new remote head."
+suggestion = "Prefer `git pull --rebase`. To solve the specific conflict with the instructions file, consider configuring a custom merge driver for this file or simply force-overwriting it before the commit step, rather than resetting the entire workspace state."
 
 [[issues]]
 severity = "suggestion"
 file = ".github/scripts/claude-code-implement.cjs"
 line = 0
-title = "Security note on dynamic require"
-description = "The script uses `require(path.join(sdkPath, ...))` where `sdkPath` is derived from an environment variable. While currently safe because `SDK_PATH` is statically defined in the workflow YAML, ensure that `SDK_PATH` never accepts untrusted user input in future iterations to prevent arbitrary code execution."
-suggestion = "No immediate change needed, but maintain strict control over the `SDK_PATH` environment variable in the workflow definition."
+title = "Hardcoded temporary path dependence"
+description = "The script relies on `SDK_PATH` defaulting to `/tmp/claude-sdk`. While this matches the current workflow setup, it tightly couples the script to the runner's filesystem layout."
+suggestion = "Ensure the dependency on the external SDK path is documented in `CLAUDE.md` or `CONTRIBUTING.md` for developers trying to run these scripts locally."
 ```
