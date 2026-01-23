@@ -199,33 +199,18 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Use GH_TOKEN for git operations (push, create branches, etc.)
+          github_token: ${{ secrets.GH_TOKEN }}
 
-          # MCP servers for extended capabilities (web research, etc.)
-          # fetch: Read web pages and documentation (no API key needed)
-          #   ⚠️ SECURITY: Enables arbitrary HTTP requests (SSRF risk in CI/CD)
+          # CLI arguments for Claude Code
+          # - MCP servers passed via --mcp-config for web research capabilities
+          #   ⚠️ SECURITY: fetch server enables arbitrary HTTP requests (SSRF risk in CI/CD)
           #   Only safe if runner is network-isolated from internal resources
-          # brave-search: Web search (requires BRAVE_API_KEY secret)
-          mcp_config: |
-            {
-              "mcpServers": {
-                "fetch": {
-                  "command": "npx",
-                  "args": ["-y", "@anthropics/mcp-server-fetch@0.1.0"]
-                },
-                "brave-search": {
-                  "command": "npx",
-                  "args": ["-y", "@modelcontextprotocol/server-brave-search@0.6.2"],
-                  "env": {
-                    "BRAVE_API_KEY": "${{ secrets.BRAVE_API_KEY }}"
-                  }
-                }
-              }
-            }
-
-          # CLI arguments for Claude Code - model selected by Haiku classifier
+          # - Model selected by Haiku classifier
           claude_args: |
             --max-turns 50
             --model ${{ steps.classify.outputs.selected_model }}
+            --mcp-config '{"mcpServers":{"fetch":{"command":"npx","args":["-y","@anthropics/mcp-server-fetch@0.1.0"]},"brave-search":{"command":"npx","args":["-y","@modelcontextprotocol/server-brave-search@0.6.2"],"env":{"BRAVE_API_KEY":"${{ secrets.BRAVE_API_KEY }}"}}}}'
 
       - name: Post model selection info (debug)
         if: steps.check-perms.outputs.has_access == 'true' && github.event_name == 'issue_comment'
