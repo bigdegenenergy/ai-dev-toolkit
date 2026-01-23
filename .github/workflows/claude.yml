@@ -3,17 +3,21 @@
 # This workflow enables Claude Code Web-like functionality through GitHub comments.
 # It uses the official anthropics/claude-code-action@v1 action.
 #
+# Architecture: Two-tier model selection
+# - Haiku: Parses comment intent and handles simple queries
+# - Opus: Handles complex tasks (planning, coding, reviewing)
+#
 # Triggers:
 # - @claude mentions in PR/issue comments
 # - @claude mentions in PR review comments
 # - Issue assignment to 'claude' or 'claude-implement' label
 #
 # Examples:
-# - "@claude review this PR"
-# - "@claude implement this feature"
-# - "@claude explain how the auth flow works"
-# - "@claude add tests for the user service"
-# - "@claude refactor this to use async/await"
+# - "@claude review this PR" → Opus (complex)
+# - "@claude implement this feature" → Opus (complex)
+# - "@claude explain how the auth flow works" → Haiku (simple)
+# - "@claude add tests for the user service" → Opus (complex)
+# - "@claude what does this function do?" → Haiku (simple)
 
 name: Claude Code Assistant
 
@@ -99,6 +103,79 @@ jobs:
             core.setOutput('has_access', 'true');
             console.log(`Access granted: ${actor} has association '${authorAssociation}'`);
 
+      - name: Extract comment body
+        if: steps.check-perms.outputs.has_access == 'true'
+        id: extract-comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let commentBody = '';
+
+            if (context.eventName === 'issue_comment') {
+              commentBody = context.payload.comment.body;
+            } else if (context.eventName === 'pull_request_review_comment') {
+              commentBody = context.payload.comment.body;
+            } else if (context.eventName === 'pull_request_review') {
+              commentBody = context.payload.review.body || '';
+            } else if (context.eventName === 'issues') {
+              commentBody = context.payload.issue.body || '';
+            }
+
+            // Remove @claude mention for cleaner parsing
+            commentBody = commentBody.replace(/@claude\s*/gi, '').trim();
+
+            core.setOutput('comment_body', commentBody);
+            console.log(`Comment body: ${commentBody}`);
+
+      - name: Classify task complexity with Haiku
+        if: steps.check-perms.outputs.has_access == 'true'
+        id: classify
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          COMMENT_BODY: ${{ steps.extract-comment.outputs.comment_body }}
+        run: |
+          # Use Haiku to classify the task complexity
+          RESPONSE=$(curl -s "https://api.anthropic.com/v1/messages" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -d "$(jq -n \
+              --arg comment "$COMMENT_BODY" \
+              '{
+                "model": "claude-haiku-4-5-20251001",
+                "max_tokens": 100,
+                "temperature": 0,
+                "system": "You classify GitHub comments to determine which AI model should handle them. Output ONLY a JSON object with no markdown.\n\nClassify as \"opus\" (complex) if the task involves:\n- Writing, implementing, or creating code\n- Planning, architecting, or designing\n- Reviewing, auditing, or debugging code\n- Refactoring or fixing bugs\n- Adding tests or features\n- Any task requiring code changes\n\nClassify as \"haiku\" (simple) if the task involves:\n- Explaining or describing existing code\n- Answering questions (what, how, where, why)\n- Summarizing or listing information\n- Finding or showing existing content\n- Quick lookups or clarifications\n\nOutput format: {\"model\": \"opus\" or \"haiku\", \"reason\": \"brief explanation\"}",
+                "messages": [{"role": "user", "content": ("Classify this request:\n\n" + $comment)}]
+              }')")
+
+          echo "Haiku classification response: $RESPONSE"
+
+          # Extract the text response
+          TEXT=$(echo "$RESPONSE" | jq -r '.content[0].text // empty')
+
+          if [ -z "$TEXT" ]; then
+            echo "Failed to get classification, defaulting to opus"
+            echo "selected_model=claude-opus-4-5-20251101" >> $GITHUB_OUTPUT
+            echo "model_reason=Classification failed, using Opus as fallback" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Parse the JSON (handle potential markdown fences)
+          CLEAN_TEXT=$(echo "$TEXT" | sed 's/```json//g' | sed 's/```//g' | tr -d '\n')
+          MODEL_CHOICE=$(echo "$CLEAN_TEXT" | jq -r '.model // "opus"')
+          REASON=$(echo "$CLEAN_TEXT" | jq -r '.reason // "No reason provided"')
+
+          echo "Classification: $MODEL_CHOICE"
+          echo "Reason: $REASON"
+
+          if [ "$MODEL_CHOICE" = "haiku" ]; then
+            echo "selected_model=claude-haiku-4-5-20251001" >> $GITHUB_OUTPUT
+          else
+            echo "selected_model=claude-opus-4-5-20251101" >> $GITHUB_OUTPUT
+          fi
+          echo "model_reason=$REASON" >> $GITHUB_OUTPUT
+
       - name: Checkout code
         if: steps.check-perms.outputs.has_access == 'true'
         uses: actions/checkout@v4
@@ -112,13 +189,34 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
-          # Custom trigger phrase (optional - default is @claude)
-          # trigger_phrase: "@ai-dev"
-
-          # CLI arguments for Claude Code
+          # CLI arguments for Claude Code - model selected by Haiku classifier
           claude_args: |
             --max-turns 50
-            --model claude-opus-4-5-20251101
+            --model ${{ steps.classify.outputs.selected_model }}
+
+      - name: Post model selection info (debug)
+        if: steps.check-perms.outputs.has_access == 'true' && github.event_name == 'issue_comment'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const model = '${{ steps.classify.outputs.selected_model }}';
+            const reason = '${{ steps.classify.outputs.model_reason }}';
+            const isOpus = model.includes('opus');
+
+            // Only post debug info if you want visibility into model selection
+            // Comment out this step in production if you don't want the extra comment
+            console.log(`Selected model: ${model}`);
+            console.log(`Reason: ${reason}`);
+
+            // Optionally post a small indicator (uncomment to enable)
+            // const emoji = isOpus ? '🧠' : '⚡';
+            // const modelName = isOpus ? 'Opus' : 'Haiku';
+            // await github.rest.issues.createComment({
+            //   owner: context.repo.owner,
+            //   repo: context.repo.repo,
+            //   issue_number: context.payload.issue.number,
+            //   body: `${emoji} Using **${modelName}** for this request.\n\n_Reason: ${reason}_`
+            // });
 
       - name: Post access denied comment
         if: steps.check-perms.outputs.has_access == 'false' && github.event_name == 'issue_comment'
