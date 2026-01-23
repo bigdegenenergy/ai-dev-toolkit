@@ -120,17 +120,32 @@ def sanitize_commit_message(message: str) -> str:
     as a list to subprocess.run() (e.g., ['git', 'commit', '-m', message])
     which bypasses the shell entirely and makes sanitization unnecessary.
 
+    PLATFORM COMPATIBILITY WARNING:
+    - shlex.quote() is designed for POSIX shells (bash, sh, zsh, etc.)
+    - It will NOT correctly escape arguments for Windows cmd.exe or PowerShell
+    - For cross-platform support, avoid shell=True and pass arguments as a list
+    - Only use this function on POSIX systems when shell execution is required
+
+    BREAKING CHANGE WARNING:
+    - This function returns a SHELL-QUOTED string (e.g., 'message' with quotes)
+    - If you pass this to subprocess.run() with a list of args, the quotes will
+      be literal characters in the commit message
+    - Only use this function when constructing shell command strings
+    - For subprocess.run() with list args, use the raw unsanitized message
+
     Args:
         message: Raw commit message
 
     Returns:
-        Sanitized message safe for use in shell commands
+        Shell-quoted message safe for use in shell command strings.
+        NOTE: The return value includes shell quoting (e.g., single quotes).
     """
     if not message:
         return ""
 
-    # Truncate to reasonable length (100 chars) BEFORE quoting to avoid cutting quotes
-    max_length = 100
+    # Truncate to reasonable length (500 chars) BEFORE quoting to avoid cutting quotes
+    # This allows for detailed commit messages including body and footer
+    max_length = 500
     if len(message) > max_length:
         message = message[:max_length]
 

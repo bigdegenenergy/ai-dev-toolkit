@@ -70,12 +70,12 @@ def test_sanitize_commit_message():
     # Empty message
     assert sanitize_commit_message("") == ""
 
-    # Very long message should be truncated to 100 chars before quoting
+    # Very long message should be truncated to 500 chars before quoting
     long_msg = "a" * 1000
     sanitized = sanitize_commit_message(long_msg)
-    # The result will be slightly longer than 100 due to shlex.quote() adding quotes
-    # For a string of 100 'a's, shlex.quote will wrap it making it ~102-104 chars
-    assert len(sanitized) <= 110  # Allow some margin for quote wrapping
+    # The result will be slightly longer than 500 due to shlex.quote() adding quotes
+    # For a string of 500 'a's, shlex.quote will wrap it making it ~502-504 chars
+    assert len(sanitized) <= 510  # Allow some margin for quote wrapping
 
 
 if __name__ == "__main__":
