@@ -183,7 +183,7 @@ jobs:
 
           claude_args: |
             --max-turns 30
-            --model claude-sonnet-4-20250514
+            --model claude-opus-4-5-20251101
 
   # Phase 2: Implementation
   implement:
@@ -305,7 +305,7 @@ jobs:
 
           claude_args: |
             --max-turns 75
-            --model claude-sonnet-4-20250514
+            --model claude-opus-4-5-20251101
 
       - name: Configure git and push
         if: steps.check-perms.outputs.has_access == 'true' && steps.check-perms.outputs.has_plan == 'true'

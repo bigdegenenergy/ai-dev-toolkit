@@ -115,7 +115,7 @@ jobs:
           # CLI arguments for Claude Code
           claude_args: |
             --max-turns 50
-            --model claude-sonnet-4-20250514
+            --model claude-opus-4-5-20251101
 
       - name: Post access denied comment
         if: steps.check-perms.outputs.has_access == 'false' && github.event_name == 'issue_comment'
