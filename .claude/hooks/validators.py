@@ -129,8 +129,8 @@ def sanitize_commit_message(message: str) -> str:
     if not message:
         return ""
 
-    # Truncate to reasonable length before quoting
-    max_length = 500
+    # Truncate to reasonable length (100 chars) BEFORE quoting to avoid cutting quotes
+    max_length = 100
     if len(message) > max_length:
         message = message[:max_length]
 

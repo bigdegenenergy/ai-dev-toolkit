@@ -8,16 +8,22 @@ ensuring proper input validation and sanitization.
 
 import sys
 import os
+import importlib.util
 
-# Add parent directory to path to import validators
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".claude", "hooks"))
-
-from validators import (
-    validate_file_path,
-    validate_json_input,
-    is_safe_command,
-    sanitize_commit_message,
+# Use importlib to load module from .claude hidden directory
+# This is more robust than sys.path manipulation for hidden directories
+validators_path = os.path.join(
+    os.path.dirname(__file__), "..", ".claude", "hooks", "validators.py"
 )
+spec = importlib.util.spec_from_file_location("validators", validators_path)
+validators = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(validators)
+
+# Import functions from the loaded module
+validate_file_path = validators.validate_file_path
+validate_json_input = validators.validate_json_input
+is_safe_command = validators.is_safe_command
+sanitize_commit_message = validators.sanitize_commit_message
 
 
 def test_validate_file_path():
@@ -64,11 +70,12 @@ def test_sanitize_commit_message():
     # Empty message
     assert sanitize_commit_message("") == ""
 
-    # Very long message should be truncated
+    # Very long message should be truncated to 100 chars before quoting
     long_msg = "a" * 1000
     sanitized = sanitize_commit_message(long_msg)
-    # The actual length may be longer due to quoting, but original should be truncated
-    assert len(sanitized) < 1000
+    # The result will be slightly longer than 100 due to shlex.quote() adding quotes
+    # For a string of 100 'a's, shlex.quote will wrap it making it ~102-104 chars
+    assert len(sanitized) <= 110  # Allow some margin for quote wrapping
 
 
 if __name__ == "__main__":
