@@ -5,36 +5,27 @@
 ```json
 {
   "review": {
-    "summary": "This PR switches the underlying model for a majority of agents and commands to `haiku`. While this is appropriate for text-processing tasks like `release-notes` or `commit-push-pr`, it presents significant risks for agents tasked with architecture, infrastructure, and complex code manipulation. Haiku generally lacks the reasoning depth required for reliable refactoring, merge conflict resolution, and secure infrastructure generation compared to Sonnet or Opus.",
+    "summary": "The new `validators.py` module introduces useful defensive checks. However, the current implementation of path validation (string-based) and commit message sanitization (deny-list) is fundamentally insecure and prone to data corruption. Path validation should use canonical path resolution, and sanitization should be replaced by secure argument handling.",
     "decision": "REQUEST_CHANGES"
   },
   "issues": [
     {
       "id": 1,
-      "severity": "important",
-      "file": ".claude/agents/infrastructure-engineer.md",
-      "line": 4,
-      "title": "Insufficient model capability for infrastructure security",
-      "description": "The `infrastructure-engineer` and `kubernetes-architect` agents are being downgraded to `haiku`. Generating Infrastructure as Code (Terraform, K8s manifests) is a high-stakes task where subtle hallucinations can lead to security vulnerabilities (e.g., overly permissive IAM roles, exposed ports) or production outages. Haiku is optimized for speed and cost, not the high-precision reasoning required for infrastructure architecture.",
-      "suggestion": "Use `claude-3-5-sonnet` (or `sonnet`) for infrastructure and architecture agents to ensure a baseline of reasoning capability and safety, rather than `haiku`."
+      "severity": "critical",
+      "file": ".claude/hooks/validators.py",
+      "line": 1,
+      "title": "Insecure Path Validation Strategy",
+      "description": "The `validate_file_path` function relies on string checking (e.g., detecting `..`) which is insufficient to prevent path traversal attacks. It does not appear to handle absolute paths (e.g., `/etc/passwd`) or symlinks, allowing access to arbitrary files outside the intended scope.",
+      "suggestion": "Use `os.path.abspath` (or `pathlib.Path.resolve()`) to resolve the target path and ensure it starts with the canonical path of the intended root directory."
     },
     {
       "id": 2,
       "severity": "important",
-      "file": ".claude/commands/refactor.md",
-      "line": 4,
-      "title": "High risk of logic regression in code modification commands",
-      "description": "Commands such as `refactor`, `merge-resolve`, and `devops-troubleshooter` involve modifying existing logic or debugging complex systems. Haiku has lower reasoning capabilities and context adherence than Opus/Sonnet, increasing the risk of introducing subtle logic bugs or failing to resolve conflicts correctly.",
-      "suggestion": "Revert these specific commands to `claude-3-5-sonnet` or `opus` to maintain reliability in complex code manipulation tasks."
-    },
-    {
-      "id": 3,
-      "severity": "suggestion",
-      "file": ".claude/agents/python-pro.md",
-      "line": 4,
-      "title": "Model mismatch for 'Pro' agents",
-      "description": "The `python-pro` and `typescript-pro` agents are explicitly defined as experts. Switching them to `haiku` (the most lightweight model) contradicts the persona and reduces the quality of generated code, particularly for advanced type handling or idiomatic patterns.",
-      "suggestion": "Consider using `sonnet` for language-specific expert agents to balance performance with coding proficiency."
+      "file": ".claude/hooks/validators.py",
+      "line": 1,
+      "title": "Brittle Commit Message Sanitization",
+      "description": "The `sanitize_commit_message` function uses a deny-list to strip characters. This corrupts legitimate text (e.g., conventional commits like `feat(scope): ...` or quotes). Furthermore, deny-lists are often incomplete against shell injection attacks.",
+      "suggestion": "Do not modify the commit message content. Instead, ensure that downstream consumers of this string execute commands using argument lists (e.g., `subprocess.run(['git', 'commit', '-m', message])`) rather than `shell=True`, which renders shell injection impossible regardless of the content."
     }
   ]
 }
