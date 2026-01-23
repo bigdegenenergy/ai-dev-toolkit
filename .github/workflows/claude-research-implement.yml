@@ -303,9 +303,11 @@ jobs:
             - If something is unclear, make reasonable assumptions
             - Focus on correctness and maintainability
 
+          # Use Haiku for implementation since the plan is already approved
+          # The heavy cognitive work (research/planning) was done by Opus
           claude_args: |
             --max-turns 75
-            --model claude-opus-4-5-20251101
+            --model claude-haiku-4-5-20250106
 
       - name: Configure git and push
         if: steps.check-perms.outputs.has_access == 'true' && steps.check-perms.outputs.has_plan == 'true'
