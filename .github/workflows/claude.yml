@@ -37,6 +37,7 @@ permissions:
   pull-requests: write
   issues: write
   actions: read  # Allows Claude to see workflow/test results
+  id-token: write  # Required for anthropics/claude-code-action OIDC
 
 # Concurrency: Allow only one Claude assistant per issue/PR
 concurrency:

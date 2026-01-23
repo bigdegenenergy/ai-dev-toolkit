@@ -70,6 +70,7 @@ permissions:
   contents: read
   pull-requests: write
   security-events: write
+  id-token: write  # Required for anthropics/claude-code-action OIDC
 
 # Concurrency: One security review per PR
 concurrency:

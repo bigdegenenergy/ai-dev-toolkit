@@ -21,6 +21,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  id-token: write  # Required for anthropics/claude-code-action OIDC
 
 # Concurrency: One research/implement per issue
 concurrency:
