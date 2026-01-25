@@ -297,6 +297,23 @@ const skillTriggers = {
       /\bautomation/,
     ],
     priority: 2
+  },
+  'chatops': {
+    patterns: [
+      /\bchatops\b/,
+      /\bslack.?bot\b/,
+      /\bdiscord.?bot\b/,
+      /\btelegram.?bot\b/,
+      /\bremote.?command/,
+      /\bchat.?trigger/,
+      /\bwebhook/,
+      /\bgateway\b/,
+      /\bbidirectional/,
+      /\bchat.?platform/,
+      /\bslash.?command/,
+      /\bbot.?integration/,
+    ],
+    priority: 2
   }
 };
 

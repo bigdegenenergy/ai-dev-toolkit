@@ -26,10 +26,10 @@ This is the **AI Dev Toolkit** - a template that configures AI coding assistants
 **Capabilities:**
 
 - **20 Specialized Agents** for different development domains
-- **16 Auto-Discovered Skills** for domain expertise
-- **33 Slash Commands** for workflows and orchestration
+- **17 Auto-Discovered Skills** for domain expertise
+- **35 Slash Commands** for workflows and orchestration
 - **8 Automated Hooks** for quality gates and friction elimination
-- **6 GitHub Action Workflows** for AI-powered PR review and implementation
+- **7 GitHub Action Workflows** for AI-powered PR review and implementation
 
 ## Environment Modes
 
@@ -87,6 +87,13 @@ This is the **AI Dev Toolkit** - a template that configures AI coding assistants
 | **Browser**     | `/browser`     | Headless browser automation tasks   |
 | **Screenshot**  | `/screenshot`  | Capture web page screenshots        |
 | **Visual Diff** | `/visual-diff` | Compare screenshots for regressions |
+
+#### Gateway (ChatOps)
+
+| Role       | Command           | When to Use                       |
+| ---------- | ----------------- | --------------------------------- |
+| **Setup**  | `/gateway-start`  | Configure chat platform webhook   |
+| **Status** | `/gateway-status` | Check Gateway and pending actions |
 
 #### Orchestration Workflows
 
@@ -178,6 +185,7 @@ Skills are context-aware expertise modules that auto-trigger based on the task a
 | **cicd-automation**      | Setting up pipelines, GitHub Actions           |
 | **observability**        | Implementing logging, metrics, tracing         |
 | **browser-automation**   | E2E testing, screenshots, visual regression    |
+| **chatops**              | Remote commands via Slack, Discord, Telegram   |
 
 Skills live in `.claude/skills/<skill>/SKILL.md` and provide domain expertise without bloating the main context.
 
@@ -230,6 +238,10 @@ Skills live in `.claude/skills/<skill>/SKILL.md` and provide domain expertise wi
 /browser                 # Headless browser automation
 /screenshot              # Capture web page screenshots
 /visual-diff             # Compare screenshots for regressions
+
+# Gateway (ChatOps)
+/gateway-start           # Configure chat platform webhooks
+/gateway-status          # Check Gateway and pending actions
 
 # Agents - Quality (invoke with @)
 @code-reviewer           # Critical code review
@@ -335,6 +347,7 @@ The `.github/workflows/` directory contains automated CI/CD workflows:
 | `claude-security-review.yml`    | Security-focused review on sensitive file changes |
 | `claude-auto-implement.yml`     | Auto-implement from `claude-implement` label      |
 | `claude-research-implement.yml` | Two-phase research + implement pipeline           |
+| `gateway-webhook.yml`           | ChatOps command handler (Slack/Discord/Telegram)  |
 
 ### Automation & Labels
 
@@ -862,10 +875,12 @@ Track improvements to this configuration:
 - **2026-01-25**: **Clawdbot Integration** - Added tools inspired by [clawdbot/clawdbot](https://github.com/clawdbot/clawdbot):
   - New `@zeno-analyzer` agent for surgical code analysis with file:line citations
   - New `@browser-automator` agent for headless browser control and E2E testing
-  - New skills: `deslop` (aggressive simplification), `systematic-debugging` (hypothesis-driven), `ralph-coder` (quality gates), `surgical-analysis` (evidence-based review), `browser-automation` (E2E testing, visual regression)
-  - New commands: `/zeno`, `/zeno-verify`, `/deslop`, `/systematic-debug`, `/browser`, `/screenshot`, `/visual-diff`
-  - Integration plan for Lobster workflow engine and Gateway ChatOps
-  - Total: 20 agents, 16 skills, 33 commands, 8 hooks, 6 AI workflows
+  - New skills: `deslop` (aggressive simplification), `systematic-debugging` (hypothesis-driven), `ralph-coder` (quality gates), `surgical-analysis` (evidence-based review), `browser-automation` (E2E testing, visual regression), `chatops` (remote chat platform commands)
+  - New commands: `/zeno`, `/zeno-verify`, `/deslop`, `/systematic-debug`, `/browser`, `/screenshot`, `/visual-diff`, `/gateway-start`, `/gateway-status`
+  - New workflow: `gateway-webhook.yml` for ChatOps command handling via Slack/Discord/Telegram
+  - Gateway command mapping in `.claude/gateway/commands.py`
+  - Integration plan for Lobster workflow engine
+  - Total: 20 agents, 17 skills, 35 commands, 8 hooks, 7 AI workflows
 
 ---
 
