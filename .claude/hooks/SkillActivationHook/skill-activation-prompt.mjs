@@ -314,6 +314,21 @@ const skillTriggers = {
       /\bbot.?integration/,
     ],
     priority: 2
+  },
+  'workflow-orchestration': {
+    patterns: [
+      /\bworkflow\b/,
+      /\bpipeline\b/,
+      /\borchestrat/,
+      /\bapproval.?gate/,
+      /\bmulti.?step/,
+      /\blobster\b/,
+      /\btyped.?workflow/,
+      /\bpause.*approval/,
+      /\bwait.*review/,
+      /\bstep.?by.?step.?execut/,
+    ],
+    priority: 2
   }
 };
 

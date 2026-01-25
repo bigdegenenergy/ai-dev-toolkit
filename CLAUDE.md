@@ -26,8 +26,8 @@ This is the **AI Dev Toolkit** - a template that configures AI coding assistants
 **Capabilities:**
 
 - **20 Specialized Agents** for different development domains
-- **17 Auto-Discovered Skills** for domain expertise
-- **35 Slash Commands** for workflows and orchestration
+- **18 Auto-Discovered Skills** for domain expertise
+- **38 Slash Commands** for workflows and orchestration
 - **8 Automated Hooks** for quality gates and friction elimination
 - **7 GitHub Action Workflows** for AI-powered PR review and implementation
 
@@ -94,6 +94,14 @@ This is the **AI Dev Toolkit** - a template that configures AI coding assistants
 | ---------- | ----------------- | --------------------------------- |
 | **Setup**  | `/gateway-start`  | Configure chat platform webhook   |
 | **Status** | `/gateway-status` | Check Gateway and pending actions |
+
+#### Workflow Engine (Lobster)
+
+| Role        | Command             | When to Use                     |
+| ----------- | ------------------- | ------------------------------- |
+| **Execute** | `/workflow`         | Run a typed workflow pipeline   |
+| **Status**  | `/workflow-status`  | Check workflow progress/pending |
+| **Approve** | `/workflow-approve` | Approve pending workflow gate   |
 
 #### Orchestration Workflows
 
@@ -167,25 +175,26 @@ This is the **AI Dev Toolkit** - a template that configures AI coding assistants
 
 Skills are context-aware expertise modules that auto-trigger based on the task at hand.
 
-| Skill                    | Auto-Triggers When                             |
-| ------------------------ | ---------------------------------------------- |
-| **autonomous-loop**      | Running iteratively until task completion      |
-| **ralph-coder**          | TDD loop with quality gates and atomic commits |
-| **tdd**                  | Writing tests first, TDD workflow              |
-| **security-review**      | Reviewing for vulnerabilities, auth code       |
-| **surgical-analysis**    | Evidence-based code analysis with citations    |
-| **deslop**               | Aggressive simplification, removing AI slop    |
-| **systematic-debugging** | Hypothesis-driven debugging, root cause        |
-| **api-design**           | Designing REST/GraphQL endpoints               |
-| **async-patterns**       | Implementing concurrent code                   |
-| **debugging**            | Investigating bugs, analyzing errors           |
-| **refactoring**          | Cleaning up code, reducing complexity          |
-| **testing-patterns**     | Writing test suites, improving coverage        |
-| **k8s-operations**       | Working with Kubernetes, containers            |
-| **cicd-automation**      | Setting up pipelines, GitHub Actions           |
-| **observability**        | Implementing logging, metrics, tracing         |
-| **browser-automation**   | E2E testing, screenshots, visual regression    |
-| **chatops**              | Remote commands via Slack, Discord, Telegram   |
+| Skill                      | Auto-Triggers When                             |
+| -------------------------- | ---------------------------------------------- |
+| **autonomous-loop**        | Running iteratively until task completion      |
+| **ralph-coder**            | TDD loop with quality gates and atomic commits |
+| **tdd**                    | Writing tests first, TDD workflow              |
+| **security-review**        | Reviewing for vulnerabilities, auth code       |
+| **surgical-analysis**      | Evidence-based code analysis with citations    |
+| **deslop**                 | Aggressive simplification, removing AI slop    |
+| **systematic-debugging**   | Hypothesis-driven debugging, root cause        |
+| **api-design**             | Designing REST/GraphQL endpoints               |
+| **async-patterns**         | Implementing concurrent code                   |
+| **debugging**              | Investigating bugs, analyzing errors           |
+| **refactoring**            | Cleaning up code, reducing complexity          |
+| **testing-patterns**       | Writing test suites, improving coverage        |
+| **k8s-operations**         | Working with Kubernetes, containers            |
+| **cicd-automation**        | Setting up pipelines, GitHub Actions           |
+| **observability**          | Implementing logging, metrics, tracing         |
+| **browser-automation**     | E2E testing, screenshots, visual regression    |
+| **chatops**                | Remote commands via Slack, Discord, Telegram   |
+| **workflow-orchestration** | Typed pipelines with approval gates            |
 
 Skills live in `.claude/skills/<skill>/SKILL.md` and provide domain expertise without bloating the main context.
 
@@ -242,6 +251,11 @@ Skills live in `.claude/skills/<skill>/SKILL.md` and provide domain expertise wi
 # Gateway (ChatOps)
 /gateway-start           # Configure chat platform webhooks
 /gateway-status          # Check Gateway and pending actions
+
+# Workflow Engine (Lobster)
+/workflow                # Execute typed workflow pipeline
+/workflow-status         # Check workflow progress
+/workflow-approve        # Approve pending workflow gate
 
 # Agents - Quality (invoke with @)
 @code-reviewer           # Critical code review
@@ -875,12 +889,12 @@ Track improvements to this configuration:
 - **2026-01-25**: **Clawdbot Integration** - Added tools inspired by [clawdbot/clawdbot](https://github.com/clawdbot/clawdbot):
   - New `@zeno-analyzer` agent for surgical code analysis with file:line citations
   - New `@browser-automator` agent for headless browser control and E2E testing
-  - New skills: `deslop` (aggressive simplification), `systematic-debugging` (hypothesis-driven), `ralph-coder` (quality gates), `surgical-analysis` (evidence-based review), `browser-automation` (E2E testing, visual regression), `chatops` (remote chat platform commands)
-  - New commands: `/zeno`, `/zeno-verify`, `/deslop`, `/systematic-debug`, `/browser`, `/screenshot`, `/visual-diff`, `/gateway-start`, `/gateway-status`
+  - New skills: `deslop`, `systematic-debugging`, `ralph-coder`, `surgical-analysis`, `browser-automation`, `chatops`, `workflow-orchestration`
+  - New commands: `/zeno`, `/zeno-verify`, `/deslop`, `/systematic-debug`, `/browser`, `/screenshot`, `/visual-diff`, `/gateway-start`, `/gateway-status`, `/workflow`, `/workflow-status`, `/workflow-approve`
   - New workflow: `gateway-webhook.yml` for ChatOps command handling via Slack/Discord/Telegram
-  - Gateway command mapping in `.claude/gateway/commands.py`
-  - Integration plan for Lobster workflow engine
-  - Total: 20 agents, 17 skills, 35 commands, 8 hooks, 7 AI workflows
+  - Lobster workflow engine with typed pipelines, approval gates, and state persistence
+  - Example workflows: `feature-pipeline.yaml`, `security-audit.yaml`
+  - Total: 20 agents, 18 skills, 38 commands, 8 hooks, 7 AI workflows
 
 ---
 
