@@ -1,7 +1,7 @@
 # OneFileLLM dependencies
 # https://github.com/jimmc414/onefilellm
 
-onefilellm>=0.1.0
+onefilellm==0.1.0
 
 # Core dependencies (included with onefilellm package, listed for reference)
 # requests>=2.31.0

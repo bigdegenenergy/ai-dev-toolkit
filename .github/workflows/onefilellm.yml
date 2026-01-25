@@ -98,6 +98,7 @@ jobs:
           INPUT_CRAWL_DEPTH: ${{ inputs.crawl_depth }}
           INPUT_CRAWL_MAX_PAGES: ${{ inputs.crawl_max_pages }}
           INPUT_FORMAT: ${{ inputs.format }}
+          INPUT_SOURCES: ${{ inputs.sources }}
         run: |
           # Sanitize output_name: only allow alphanumeric, dash, underscore
           SAFE_OUTPUT_NAME=$(echo "$INPUT_OUTPUT_NAME" | tr -cd '[:alnum:]-_')
@@ -126,6 +127,53 @@ jobs:
               exit 1
               ;;
           esac
+
+          # Validate sources to prevent argument injection (Issue #1)
+          # Check that no source starts with a dash to prevent flag injection
+          for source in $INPUT_SOURCES; do
+            if [[ "$source" =~ ^- ]]; then
+              echo "Error: Source '$source' starts with a dash. This is not allowed to prevent argument injection."
+              exit 1
+            fi
+          done
+
+          # Validate URLs to prevent SSRF (Issue #2)
+          # Block private IP ranges, loopback, and cloud metadata services
+          for source in $INPUT_SOURCES; do
+            # Extract URL scheme and host if it looks like a URL
+            if [[ "$source" =~ ^https?:// ]]; then
+              # Extract hostname from URL
+              hostname=$(echo "$source" | sed -E 's|^https?://([^/:]+).*|\1|')
+
+              # Block loopback addresses
+              if [[ "$hostname" =~ ^(localhost|127\.|0\.0\.0\.0) ]]; then
+                echo "Error: Source '$source' targets loopback address. This is not allowed for security reasons."
+                exit 1
+              fi
+
+              # Block private IP ranges (RFC1918)
+              if [[ "$hostname" =~ ^10\. ]] || \
+                 [[ "$hostname" =~ ^192\.168\. ]] || \
+                 [[ "$hostname" =~ ^172\.(1[6-9]|2[0-9]|3[0-1])\. ]]; then
+                echo "Error: Source '$source' targets private IP range. This is not allowed for security reasons."
+                exit 1
+              fi
+
+              # Block cloud metadata services
+              if [[ "$hostname" =~ ^169\.254\.169\.254 ]] || \
+                 [[ "$hostname" =~ ^metadata\. ]] || \
+                 [[ "$hostname" = "metadata" ]]; then
+                echo "Error: Source '$source' targets cloud metadata service. This is not allowed for security reasons."
+                exit 1
+              fi
+
+              # Block link-local addresses
+              if [[ "$hostname" =~ ^169\.254\. ]]; then
+                echo "Error: Source '$source' targets link-local address. This is not allowed for security reasons."
+                exit 1
+              fi
+            fi
+          done
 
           echo "Inputs validated successfully"
 
@@ -180,13 +228,13 @@ jobs:
           echo "Running onefilellm with validated inputs..."
 
           # Execute using array expansion for safety
+          # Use -- separator to prevent argument injection (sources validated in earlier step)
           # Note: INPUT_SOURCES is intentionally not quoted to allow space-separated sources
-          # Each source URL/path is validated by onefilellm itself
-          if onefilellm "${ARGS[@]}" $INPUT_SOURCES > "$OUTPUT_FILE" 2>&1; then
+          if onefilellm "${ARGS[@]}" -- $INPUT_SOURCES > "$OUTPUT_FILE" 2>&1; then
             echo "onefilellm completed successfully"
           else
             # If direct output fails, try with python -m
-            python -m onefilellm "${ARGS[@]}" $INPUT_SOURCES > "$OUTPUT_FILE" 2>&1 || {
+            python -m onefilellm "${ARGS[@]}" -- $INPUT_SOURCES > "$OUTPUT_FILE" 2>&1 || {
               echo "Error: onefilellm failed"
               cat "$OUTPUT_FILE"
               exit 1
