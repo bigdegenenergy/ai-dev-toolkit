@@ -239,15 +239,26 @@ Tokens: ~${{ needs.aggregate.outputs.token_count }}
           echo "Created PR: ${PR_URL}"
 
       - name: Auto-merge Pull Request
+        id: merge
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           PR_URL="${{ steps.create-pr.outputs.pull-request-url }}"
 
-          # Enable auto-merge (squash)
-          gh pr merge "${PR_URL}" --squash --auto --delete-branch
-
-          echo "Auto-merge enabled for ${PR_URL}"
+          # Try to enable auto-merge (squash)
+          # This may fail if:
+          # - Token lacks admin/write permissions
+          # - Auto-merge is not enabled on the repo
+          # - Branch protection rules prevent it
+          if gh pr merge "${PR_URL}" --squash --auto --delete-branch 2>&1; then
+            echo "auto_merged=true" >> $GITHUB_OUTPUT
+            echo "Auto-merge enabled for ${PR_URL}"
+          else
+            echo "auto_merged=false" >> $GITHUB_OUTPUT
+            echo "Auto-merge not available (likely insufficient permissions or repo settings)"
+            echo "PR created successfully - manual merge required: ${PR_URL}"
+          fi
 
       - name: Summary
         run: |
@@ -261,4 +272,8 @@ Tokens: ~${{ needs.aggregate.outputs.token_count }}
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Pull Request:** ${{ steps.create-pr.outputs.pull-request-url }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The PR will be auto-merged and the branch deleted." >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.merge.outputs.auto_merged }}" == "true" ]; then
+            echo "The PR will be auto-merged and the branch deleted." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Note:** Auto-merge not available. Please merge the PR manually." >> $GITHUB_STEP_SUMMARY
+          fi

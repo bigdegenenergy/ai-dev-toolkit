@@ -29,8 +29,20 @@ The workflow automatically:
 ### Requirements
 
 - **`GH_TOKEN` secret**: A Personal Access Token with `repo` scope (for creating branches and PRs)
-- If auto-merge is enabled on the repo, PRs merge automatically
-- If not, PRs will be created but require manual merge
+
+### Auto-Merge Behavior
+
+Auto-merge requires:
+
+- Token with admin/write permissions
+- Auto-merge enabled in repo settings
+- No blocking branch protection rules
+
+If auto-merge fails (insufficient permissions or repo settings), the workflow will:
+
+- Still create the PR successfully
+- Report that manual merge is required
+- Not fail the workflow
 
 ### Manual Trigger (workflow_dispatch)
 
