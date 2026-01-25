@@ -167,8 +167,9 @@ WHAT GETS INSTALLED:
     docs/             (setup guides and references)
     tools/            (utilities like onefilellm)
 
-    CLAUDE.md         (project instructions)
     .mcp.json.template (MCP server configuration)
+
+    NOTE: CLAUDE.md is NOT installed - each repo maintains its own project instructions.
 
 For more information, visit: https://github.com/bigdegenenergy/ai-dev-toolkit
 EOF
@@ -413,36 +414,6 @@ install_claude_directory() {
     if [ ! -f ".claude/notifications.json" ] && [ -f ".claude/notifications.json.template" ]; then
         cp .claude/notifications.json.template .claude/notifications.json
         log_success "Created notifications.json from template"
-    fi
-}
-
-install_claude_md() {
-    log_header "Installing CLAUDE.md"
-
-    if [ "$DRY_RUN" = true ]; then
-        log_info "[DRY RUN] Would install CLAUDE.md project instructions"
-        return 0
-    fi
-
-    local source_file="$TEMP_DIR/CLAUDE.md"
-    if [ "$WEB_MODE" = true ] && [ -f "$TEMP_DIR/web-compatible/CLAUDE.md" ]; then
-        source_file="$TEMP_DIR/web-compatible/CLAUDE.md"
-        log_info "Using web-compatible CLAUDE.md"
-    fi
-
-    if [ -f "CLAUDE.md" ]; then
-        if confirm_overwrite "CLAUDE.md"; then
-            # Backup existing
-            cp CLAUDE.md "CLAUDE.md.backup.$(date +%Y%m%d%H%M%S)"
-            cp "$source_file" CLAUDE.md
-            log_success "Updated CLAUDE.md (backup created)"
-        else
-            cp "$source_file" "CLAUDE.md.new"
-            log_warning "Saved as CLAUDE.md.new (existing file preserved)"
-        fi
-    else
-        cp "$source_file" CLAUDE.md
-        log_success "Installed CLAUDE.md"
     fi
 }
 
@@ -1258,7 +1229,7 @@ print_summary() {
     echo ""
 
     echo -e "${YELLOW}2. Commit the Configuration:${NC}"
-    echo "   git add .claude .github docs tools CLAUDE.md .gitignore .mcp.json.template"
+    echo "   git add .claude .github docs tools .gitignore .mcp.json.template"
     echo "   git commit -m \"chore: add development workflow configuration\""
     echo ""
 
@@ -1293,7 +1264,6 @@ main() {
     check_prerequisites
     download_source
     install_claude_directory
-    install_claude_md
     install_mcp_template
     install_docs
     install_tools
