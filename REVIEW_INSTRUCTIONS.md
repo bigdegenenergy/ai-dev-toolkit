@@ -5,27 +5,36 @@
 ```json
 {
   "review": {
-    "summary": "The PR is procedurally incomplete (empty description, unchecked mandatory checklists). Code-wise, the logic change enables force installs to proceed but removes helpful instructions and risks conflating force/update modes in logs.",
+    "summary": "The PR introduces aggressive auto-update logic that removes user safety checks and simultaneously enables conflicting `UPDATE` and `FORCE` modes. It also includes an artifact file that appears to be unintentional.",
     "decision": "REQUEST_CHANGES"
   },
   "issues": [
     {
       "id": 1,
       "severity": "important",
-      "file": "PR Description",
-      "line": 1,
-      "title": "Missing Mandatory PR Information",
-      "description": "The PR description is empty. The 'Changes Made', 'Testing Performed', and 'Pre-Merge Checklist' sections must be filled out. Additionally, the mandatory 'Source Repository Check' is unchecked.",
-      "suggestion": "Please fill out the PR template completely and verify that all pre-merge checks have been performed."
+      "file": "install.sh",
+      "line": 5,
+      "title": "Conflicting installation modes set simultaneously",
+      "description": "The script sets both `UPDATE_MODE=true` and `FORCE_MODE=true` when an installation is detected. Typically, `FORCE_MODE` implies a destructive reinstall (rm -rf && clone), while `UPDATE_MODE` implies an in-place update (git pull). Setting both is contradictory; if the directory is wiped by force, the update logic is irrelevant. If it's not wiped, `FORCE_MODE` might be misleading.",
+      "suggestion": "Determine the specific intent (clean reinstall vs. in-place update) and set only the appropriate flag. If `FORCE_MODE` is intended to bypass version checks but keep files, verify downstream logic supports this combination."
     },
     {
       "id": 2,
-      "severity": "suggestion",
+      "severity": "important",
       "file": "install.sh",
+      "line": 3,
+      "title": "Removal of safety check for existing installations",
+      "description": "Previously, the script aborted if an installation existed, protecting local modifications. The new logic automatically forces an update/reinstall. This could lead to data loss if a user has modified files within the toolkit directory expecting them to persist.",
+      "suggestion": "Restore a confirmation prompt or require an explicit argument (like `--auto-update`) to bypass the safety check, rather than defaulting to aggressive updates."
+    },
+    {
+      "id": 3,
+      "severity": "suggestion",
+      "file": "REVIEW_INSTRUCTIONS.md",
       "line": 1,
-      "title": "Potential Log Confusion (Force vs Update)",
-      "description": "By allowing `FORCE_MODE` to fall through the detection block, the script might execute logic intended for updates (e.g., logging 'Update mode'). This can be confusing for users performing a forced reinstall.",
-      "suggestion": "Verify that the subsequent logic differentiates between `FORCE_MODE` and `UPDATE_MODE` so the user receives accurate feedback (e.g., 'Force installing...' vs 'Updating...')."
+      "title": "Commit of generated artifact",
+      "description": "The file `REVIEW_INSTRUCTIONS.md` appears to be a generated report or instruction set for an AI agent and likely should not be committed to the source repository.",
+      "suggestion": "Remove `REVIEW_INSTRUCTIONS.md` from the PR."
     }
   ]
 }
