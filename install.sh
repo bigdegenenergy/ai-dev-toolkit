@@ -41,6 +41,7 @@
 #   bash install.sh [OPTIONS]
 #
 # Options:
+#   --update         Update existing installation to latest version
 #   --no-github      Skip GitHub Actions workflows
 #   --no-git-hooks   Skip git hooks setup
 #   --no-profiles    Skip language profiles
@@ -84,6 +85,7 @@ PROFILE_NAME=""
 WEB_MODE=false
 FORCE_MODE=false
 DRY_RUN=false
+UPDATE_MODE=false
 
 # Counters
 COMMANDS_INSTALLED=0
@@ -128,6 +130,7 @@ Usage: $0 [OPTIONS]
 Installs AI Dev Toolkit configuration to amplify solo developer capabilities.
 
 OPTIONS:
+    --update         Update existing installation to latest version
     --no-github      Skip GitHub Actions workflows installation
     --no-git-hooks   Skip git hooks setup (pre-commit, commit-msg)
     --no-profiles    Skip language profiles (default: profiles not installed)
@@ -140,6 +143,9 @@ OPTIONS:
 EXAMPLES:
     # Standard installation
     $0
+
+    # Update existing installation to latest
+    $0 --update
 
     # Install with Python profile
     $0 --profile=python
@@ -205,6 +211,54 @@ check_prerequisites() {
     cd "$GIT_ROOT"
     log_success "Git root: $GIT_ROOT"
 
+    # Check if this IS the ai-dev-toolkit source repository
+    if [ -f "$GIT_ROOT/install.sh" ] && [ -f "$GIT_ROOT/CLAUDE.md" ] && \
+       [ -d "$GIT_ROOT/.claude/commands" ] && [ -d "$GIT_ROOT/.claude/agents" ] && \
+       [ -d "$GIT_ROOT/.github/workflows" ]; then
+        # Check if remote is the source repo
+        local remote_url
+        remote_url=$(git remote get-url origin 2>/dev/null || echo "")
+        if [[ "$remote_url" == *"ai-dev-toolkit"* ]]; then
+            echo ""
+            log_warning "This appears to be the AI Dev Toolkit source repository itself!"
+            echo ""
+            echo -e "${YELLOW}You are already in the toolkit source repo. To update a DIFFERENT repo:${NC}"
+            echo ""
+            echo "  1. Navigate to your target project:"
+            echo "     cd /path/to/your/project"
+            echo ""
+            echo "  2. Run the install script from here:"
+            echo "     bash $GIT_ROOT/install.sh"
+            echo ""
+            echo "  Or use the one-liner:"
+            echo "     curl -fsSL https://raw.githubusercontent.com/bigdegenenergy/ai-dev-toolkit/main/install.sh | bash"
+            echo ""
+            exit 0
+        fi
+    fi
+
+    # Check if AI Dev Toolkit is already installed in this repo
+    if [ -d "$GIT_ROOT/.claude/commands" ] && [ -d "$GIT_ROOT/.claude/agents" ]; then
+        if [ "$UPDATE_MODE" = false ]; then
+            echo ""
+            log_warning "AI Dev Toolkit is already installed in this repository!"
+            echo ""
+            echo -e "${YELLOW}Detected existing installation:${NC}"
+            echo "  • .claude/commands/ exists"
+            echo "  • .claude/agents/ exists"
+            echo ""
+            echo -e "${YELLOW}To update to the latest version, run:${NC}"
+            echo "  bash install.sh --update"
+            echo ""
+            echo -e "${YELLOW}Or to force a fresh install (overwrites all files):${NC}"
+            echo "  bash install.sh --force"
+            echo ""
+            exit 0
+        else
+            log_info "Update mode: will refresh existing installation"
+        fi
+    fi
+
     # Check for curl or wget
     if command -v curl &> /dev/null; then
         DOWNLOADER="curl"
@@ -229,6 +283,11 @@ check_prerequisites() {
 parse_arguments() {
     while [[ $# -gt 0 ]]; do
         case $1 in
+            --update)
+                UPDATE_MODE=true
+                FORCE_MODE=true  # Updates should overwrite without prompting
+                shift
+                ;;
             --no-github)
                 INSTALL_GITHUB=false
                 shift
