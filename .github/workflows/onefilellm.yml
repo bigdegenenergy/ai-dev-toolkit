@@ -164,21 +164,23 @@ jobs:
               ;;
           esac
 
-          # Validate sources using ALLOWLIST approach (more secure than denylist)
-          # Allowed characters: alphanumeric, URL-safe chars, and common path chars
-          # Pattern: a-zA-Z0-9 . - _ / : @ % ? = # + ~ &
-          # Note: & is allowed for URL query params since we use env vars (not shell interpolation)
+          # Validate sources using strict ALLOWLIST approach
+          # SECURITY: Only permit characters that are safe in shell contexts
+          # Allowed: alphanumeric, dots, hyphens, underscores, slashes, colons, @, %, ?, =, #, +, ~
+          # BLOCKED (shell metacharacters): $ ` ; | & ( ) * ' " > < { } [ ] ! \
+          # URLs with & or other blocked chars must use URL encoding (e.g., %26 for &)
           for source in $INPUT_SOURCES; do
             # Must not start with a dash (prevents flag injection)
             if [[ "$source" =~ ^- ]]; then
               echo "Error: Source '$source' starts with a dash. This is not allowed to prevent argument injection."
               exit 1
             fi
-            # Allowlist validation: only permit safe URL and path characters
-            # This is safer than denylist as it blocks any unexpected characters
-            if ! [[ "$source" =~ ^[a-zA-Z0-9._~:/?#\[@\]@!\$\&\'\(\)\*\+,;=%/-]+$ ]]; then
-              echo "Error: Source '$source' contains invalid characters."
-              echo "Allowed: alphanumeric, URL-safe chars (. - _ / : @ % ? = # + ~ &)"
+            # Strict allowlist: only truly safe URL and path characters
+            # This blocks all shell metacharacters that could enable injection
+            if ! [[ "$source" =~ ^[a-zA-Z0-9._~:/@%?=#+,-]+$ ]]; then
+              echo "Error: Source '$source' contains unsafe characters."
+              echo "Allowed: a-z A-Z 0-9 . _ ~ : / @ % ? = # + , -"
+              echo "For URLs with & or special chars, use URL encoding (e.g., %26 for &)"
               exit 1
             fi
           done
