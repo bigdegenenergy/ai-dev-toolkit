@@ -166,13 +166,16 @@ jobs:
             const issueNumber = context.issue?.number || context.payload.pull_request?.number;
             const isForkPR = process.env.IS_FORK_PR === 'true';
 
+            // Build a safe summary that doesn't expose actual PII values
+            const safeSummary = findings.map(f => `${f.type}: ${f.count} instance(s)`).join(', ');
+
             if (issueNumber) {
               if (isForkPR) {
                 // For fork PRs, GITHUB_TOKEN has read-only permissions
-                // Log the findings instead of posting a comment
+                // Log only the types detected, NOT the actual content or samples
                 console.log('::warning::Fork PR detected - cannot post comment due to read-only permissions');
-                console.log('PII findings that would have been posted:');
-                console.log(message);
+                console.log(`PII types detected: ${safeSummary}`);
+                console.log('The PR author must remove this PII before the PR can be merged.');
               } else {
                 try {
                   await github.rest.issues.createComment({
@@ -183,10 +186,9 @@ jobs:
                   });
                   console.log(`Posted PII alert on ${contentType} #${issueNumber}`);
                 } catch (err) {
-                  // Handle permission errors gracefully (e.g., fork PRs)
+                  // Handle permission errors gracefully - don't log raw PII
                   console.log(`::warning::Could not post comment: ${err.message}`);
-                  console.log('PII findings:');
-                  console.log(message);
+                  console.log(`PII types detected: ${safeSummary}`);
                 }
               }
             }
