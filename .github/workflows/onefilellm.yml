@@ -161,11 +161,18 @@ jobs:
               ;;
           esac
 
-          # Validate sources to prevent argument injection (Issue #1)
+          # Validate sources to prevent argument injection and command injection
           # Check that no source starts with a dash to prevent flag injection
+          # Check for shell metacharacters to prevent command injection
           for source in $INPUT_SOURCES; do
             if [[ "$source" =~ ^- ]]; then
               echo "Error: Source '$source' starts with a dash. This is not allowed to prevent argument injection."
+              exit 1
+            fi
+            # Block shell metacharacters that could enable command injection
+            # Allows: alphanumeric, dots, slashes, colons, hyphens, underscores, query strings
+            if [[ "$source" =~ [\$\`\;\|\&\>\<\(\)\{\}\[\]\!\\] ]]; then
+              echo "Error: Source '$source' contains shell metacharacters. This is not allowed for security reasons."
               exit 1
             fi
           done
