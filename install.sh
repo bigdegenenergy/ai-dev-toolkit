@@ -329,18 +329,23 @@ download_source() {
         trap 'rm -rf "$TEMP_DIR"' EXIT
 
         if [ "$DRY_RUN" = true ]; then
-            log_info "[DRY RUN] Would clone $SOURCE_REPO (tag: $SOURCE_TAG) to $TEMP_DIR"
+            log_info "[DRY RUN] Would clone $SOURCE_REPO (ref: $SOURCE_TAG) to $TEMP_DIR"
             return 0
         fi
 
         log_info "Cloning repository (version: $SOURCE_TAG)..."
-        if ! git clone --quiet --depth 1 --branch "$SOURCE_TAG" "$SOURCE_REPO" "$TEMP_DIR" 2>/dev/null; then
+        # Try branch/tag first, fall back to commit SHA clone
+        if git clone --quiet --depth 1 --branch "$SOURCE_TAG" "$SOURCE_REPO" "$TEMP_DIR" 2>/dev/null; then
+            log_success "Downloaded configuration source (pinned to $SOURCE_TAG)"
+        elif git clone --quiet "$SOURCE_REPO" "$TEMP_DIR" 2>/dev/null && \
+             (cd "$TEMP_DIR" && git checkout --quiet "$SOURCE_TAG" 2>/dev/null); then
+            log_success "Downloaded configuration source (pinned to commit $SOURCE_TAG)"
+        else
             log_error "Failed to clone version $SOURCE_TAG"
             log_error "The requested version may not exist or there may be a network issue."
             log_error "Available versions: https://github.com/bigdegenenergy/ai-dev-toolkit/tags"
             exit 1
         fi
-        log_success "Downloaded configuration source (pinned to $SOURCE_TAG)"
         return 0
     fi
 
@@ -360,18 +365,23 @@ download_source() {
     trap 'rm -rf "$TEMP_DIR"' EXIT
 
     if [ "$DRY_RUN" = true ]; then
-        log_info "[DRY RUN] Would clone $SOURCE_REPO (tag: $SOURCE_TAG) to $TEMP_DIR"
+        log_info "[DRY RUN] Would clone $SOURCE_REPO (ref: $SOURCE_TAG) to $TEMP_DIR"
         return 0
     fi
 
     log_info "Cloning repository (version: $SOURCE_TAG)..."
-    if ! git clone --quiet --depth 1 --branch "$SOURCE_TAG" "$SOURCE_REPO" "$TEMP_DIR" 2>/dev/null; then
+    # Try branch/tag first, fall back to commit SHA clone
+    if git clone --quiet --depth 1 --branch "$SOURCE_TAG" "$SOURCE_REPO" "$TEMP_DIR" 2>/dev/null; then
+        log_success "Downloaded configuration source (pinned to $SOURCE_TAG)"
+    elif git clone --quiet "$SOURCE_REPO" "$TEMP_DIR" 2>/dev/null && \
+         (cd "$TEMP_DIR" && git checkout --quiet "$SOURCE_TAG" 2>/dev/null); then
+        log_success "Downloaded configuration source (pinned to commit $SOURCE_TAG)"
+    else
         log_error "Failed to clone version $SOURCE_TAG"
         log_error "The requested version may not exist or there may be a network issue."
         log_error "Available versions: https://github.com/bigdegenenergy/ai-dev-toolkit/tags"
         exit 1
     fi
-    log_success "Downloaded configuration source (pinned to $SOURCE_TAG)"
 }
 
 install_claude_directory() {
