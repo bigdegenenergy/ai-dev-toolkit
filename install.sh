@@ -239,7 +239,7 @@ check_prerequisites() {
 
     # Check if AI Dev Toolkit is already installed in this repo
     if [ -d "$GIT_ROOT/.claude/commands" ] && [ -d "$GIT_ROOT/.claude/agents" ]; then
-        if [ "$UPDATE_MODE" = false ]; then
+        if [ "$UPDATE_MODE" = false ] && [ "$FORCE_MODE" = false ]; then
             echo ""
             log_warning "AI Dev Toolkit is already installed in this repository!"
             echo ""
@@ -249,9 +249,6 @@ check_prerequisites() {
             echo ""
             echo -e "${YELLOW}To update to the latest version, run:${NC}"
             echo "  bash install.sh --update"
-            echo ""
-            echo -e "${YELLOW}Or to force a fresh install (overwrites all files):${NC}"
-            echo "  bash install.sh --force"
             echo ""
             exit 0
         else
