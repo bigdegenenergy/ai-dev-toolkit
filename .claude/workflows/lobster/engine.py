@@ -9,7 +9,7 @@ The main workflow execution engine that:
 - Manages retries and failure handling
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 import uuid
@@ -168,7 +168,7 @@ class WorkflowEngine:
             workflow_id=workflow_id,
             status=WorkflowStatus.NOT_STARTED,
             variables=variables or {},
-            started_at=datetime.now(),
+            started_at=datetime.now(timezone.utc),
         )
 
         self.state_manager.save_state(state)
@@ -193,7 +193,7 @@ class WorkflowEngine:
         """
         if step_index >= len(workflow.steps):
             state.status = WorkflowStatus.COMPLETED
-            state.completed_at = datetime.now()
+            state.completed_at = datetime.now(timezone.utc)
             self.state_manager.save_state(state)
             return state, False
 
@@ -205,7 +205,7 @@ class WorkflowEngine:
         result = StepResult(
             step_name=step.name,
             status=StepStatus.RUNNING,
-            started_at=datetime.now(),
+            started_at=datetime.now(timezone.utc),
         )
 
         # Execute based on step type
@@ -220,12 +220,12 @@ class WorkflowEngine:
             if not step.continue_on_failure:
                 state.status = WorkflowStatus.FAILED
                 state.error = f"Step '{step.name}' failed: {e}"
-                result.completed_at = datetime.now()
+                result.completed_at = datetime.now(timezone.utc)
                 state.step_results.append(result)
                 self.state_manager.save_state(state)
                 return state, False
 
-        result.completed_at = datetime.now()
+        result.completed_at = datetime.now(timezone.utc)
         result.duration_seconds = (
             result.completed_at - result.started_at
         ).total_seconds()
@@ -266,7 +266,9 @@ class WorkflowEngine:
         shell_safe = step.step_type == StepType.SHELL
 
         # Template substitution in inputs
-        inputs = self._substitute_variables(step.inputs, variables, shell_safe=shell_safe)
+        inputs = self._substitute_variables(
+            step.inputs, variables, shell_safe=shell_safe
+        )
 
         # For shell commands, also substitute and escape the target command
         target = step.target

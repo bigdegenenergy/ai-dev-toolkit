@@ -17,68 +17,118 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 # ============================================
 # DANGEROUS COMMAND PATTERNS
 # ============================================
+# SECURITY: Use \s+ for whitespace matching to prevent bypass with extra spaces
+# Example: "rm  -rf /" (two spaces) would bypass "rm -rf /" but not "rm\s+-rf\s+/"
 
 DANGEROUS_PATTERNS=(
-    # Destructive file operations
-    "rm -rf /"
-    "rm -rf /*"
-    "rm -rf ~"
-    "rm -rf \$HOME"
+    # Destructive file operations (use \s+ for whitespace to prevent bypass with extra spaces)
+    'rm\s+-rf\s+/'
+    'rm\s+-rf\s+/\*'
+    'rm\s+-rf\s+~'
+    'rm\s+-rf\s+\$HOME'
 
     # Git destructive operations
-    "git reset --hard"
-    "git push.*--force"
-    "git push.*-f"
-    "git clean -fdx"
+    'git\s+reset\s+--hard'
+    'git\s+push.*--force'
+    'git\s+push.*-f\s'
+    'git\s+clean\s+-fdx'
 
     # Database destructive operations
-    "drop table"
-    "drop database"
-    "truncate table"
-    "delete from.*where 1=1"
-    "delete from.*without where"
+    'drop\s+table'
+    'drop\s+database'
+    'truncate\s+table'
+    'delete\s+from.*where\s+1\s*=\s*1'
+    'delete\s+from.*without\s+where'
 
     # System-level operations
-    "chmod 777"
-    "chmod -R 777"
-    "sudo rm"
-    "sudo chmod"
-    "> /dev/sd"
-    "mkfs"
-    "dd if=.*/dev/"
+    'chmod\s+777'
+    'chmod\s+-R\s+777'
+    'sudo\s+rm'
+    'sudo\s+chmod'
+    '>\s*/dev/sd'
+    'mkfs'
+    'dd\s+if=.*/dev/'
 
     # Credential exposure
-    "cat.*\.env"
-    "cat.*credentials"
-    "cat.*secret"
-    "cat.*/etc/passwd"
-    "cat.*/etc/shadow"
-    "echo.*API_KEY"
-    "echo.*SECRET"
-    "echo.*PASSWORD"
+    'cat\s+.*\.env'
+    'cat\s+.*credentials'
+    'cat\s+.*secret'
+    'cat\s+.*/etc/passwd'
+    'cat\s+.*/etc/shadow'
+    'echo\s+.*API_KEY'
+    'echo\s+.*SECRET'
+    'echo\s+.*PASSWORD'
 
     # Network exfiltration patterns
-    "curl.*\|.*sh"
-    "wget.*\|.*sh"
-    "curl.*\|.*bash"
-    "wget.*\|.*bash"
+    'curl.*\|.*sh'
+    'wget.*\|.*sh'
+    'curl.*\|.*bash'
+    'wget.*\|.*bash'
 )
 
 # ============================================
 # SENSITIVE FILE PATTERNS
 # ============================================
+# SECURITY: Comprehensive list of credential and configuration files
+# that should never be read or modified by agents
 
 SENSITIVE_FILES=(
+    # Environment files
     ".env"
     ".env.local"
     ".env.production"
+    ".env.development"
+    ".env.staging"
+
+    # Credential files
     "credentials.json"
     "secrets.yaml"
     "secrets.yml"
+    "service-account.json"
+
+    # SSH keys
     ".ssh/id_rsa"
     ".ssh/id_ed25519"
+    ".ssh/id_dsa"
+    ".ssh/authorized_keys"
+    ".ssh/known_hosts"
+
+    # Certificate/key files
     "*.pem"
     "*.key"
+    "*.p12"
+    "*.pfx"
+
+    # AWS credentials
+    ".aws/credentials"
+    ".aws/config"
+
+    # GCP credentials
+    "gcloud/credentials"
+    "application_default_credentials.json"
+
+    # Azure credentials
+    ".azure/credentials"
+
+    # Docker credentials
+    ".docker/config.json"
+
+    # Kubernetes credentials
+    ".kube/config"
+
+    # System files (absolute paths)
+    "/etc/passwd"
+    "/etc/shadow"
+    "/etc/sudoers"
+    "/etc/ssh/ssh_host"
+
+    # NPM/Yarn tokens
+    ".npmrc"
+    ".yarnrc"
+
+    # Git credentials
+    ".git-credentials"
+    ".netrc"
 )
 
 # ============================================

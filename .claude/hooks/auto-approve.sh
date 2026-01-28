@@ -3,7 +3,7 @@
 # Eliminates approval friction for commands you already trust.
 #
 # This hook intercepts permission requests and automatically approves
-# safe, well-known commands. No more clicking "approve" for npm test.
+# safe, well-known commands. No more clicking "approve" for pytest.
 #
 # Output: JSON with decision field
 #   {"decision": "approve"} - Auto-approve the command
@@ -13,6 +13,24 @@
 # Exit codes:
 #   0 = Hook ran successfully (output determines action)
 #   non-zero = Hook failed, fall through to normal behavior
+#
+# SECURITY NOTES:
+# ===============
+# DO NOT auto-approve commands that execute user-defined scripts from
+# mutable config files (package.json, Makefile, etc.). An agent could:
+# 1. Modify package.json to add malicious code to "test" script
+# 2. Run "npm test" which would be auto-approved
+# 3. Execute arbitrary code without human review
+#
+# Therefore, we only auto-approve:
+# - Direct binary runners (pytest, cargo test, go test)
+# - Read-only tools (git status, ls, grep)
+# - Formatters that only modify files in expected ways
+#
+# We DO NOT auto-approve:
+# - npm/yarn/pnpm run <anything> (executes package.json scripts)
+# - make (executes Makefile targets)
+# - Any command that delegates to user-defined config
 
 # Read the permission request from stdin
 INPUT=$(cat)
@@ -27,7 +45,7 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 # ============================================
 
 # Function to check if command contains shell metacharacters that could chain commands
-# This prevents attacks like "npm test; rm -rf /" or "npm test && malicious"
+# This prevents attacks like "pytest; rm -rf /" or "pytest && malicious"
 contains_shell_metacharacters() {
     local cmd="$1"
 
@@ -38,7 +56,7 @@ contains_shell_metacharacters() {
     local CMD_SUBST='(`|\$\()'
     # Pattern 3: Output redirection (>)
     local REDIRECT='>'
-    # Pattern 4: Newlines (critical - "npm test\nrm -rf /" bypass)
+    # Pattern 4: Newlines (critical - "pytest\nrm -rf /" bypass)
     local NEWLINES=$'[\r\n]'
 
     if [[ "$cmd" =~ $CHAIN_CHARS ]] || \
@@ -55,11 +73,13 @@ contains_shell_metacharacters() {
 # ============================================
 #
 # SECURITY NOTE: These patterns use prefix matching (^command).
-# This means "npm test --some-flag" will also be approved.
+# This means "pytest --some-flag" will also be approved.
 # This is intentional to allow legitimate flags like --watch, --coverage.
 # The shell metacharacter check above prevents dangerous chaining.
-# If a specific tool has file output flags (e.g., --output-file),
-# consider adding it to the deny list or using exact matching.
+#
+# IMPORTANT: We only auto-approve commands that run binaries directly,
+# NOT package manager scripts (npm run, yarn, make) which execute
+# user-defined code from mutable config files.
 
 if [[ "$TOOL_NAME" == "Bash" ]] && [[ -n "$BASH_COMMAND" ]]; then
     # SECURITY: Never auto-approve commands with shell metacharacters
@@ -68,23 +88,21 @@ if [[ "$TOOL_NAME" == "Bash" ]] && [[ -n "$BASH_COMMAND" ]]; then
         exit 0
     fi
 
-    # Test commands - always safe
-    if [[ "$BASH_COMMAND" =~ ^npm\ test ]] || \
-       [[ "$BASH_COMMAND" =~ ^pnpm\ test ]] || \
-       [[ "$BASH_COMMAND" =~ ^yarn\ test ]] || \
-       [[ "$BASH_COMMAND" =~ ^pytest ]] || \
+    # Test commands - ONLY direct binary runners
+    # SECURITY: Do NOT auto-approve npm test, yarn test, pnpm test, make test
+    # because package.json scripts can be modified to run arbitrary commands
+    if [[ "$BASH_COMMAND" =~ ^pytest ]] || \
        [[ "$BASH_COMMAND" =~ ^python\ -m\ pytest ]] || \
        [[ "$BASH_COMMAND" =~ ^cargo\ test ]] || \
-       [[ "$BASH_COMMAND" =~ ^go\ test ]] || \
-       [[ "$BASH_COMMAND" =~ ^make\ test ]]; then
+       [[ "$BASH_COMMAND" =~ ^go\ test ]]; then
         echo '{"decision": "approve"}'
         exit 0
     fi
 
-    # Lint commands - safe, read-only
-    if [[ "$BASH_COMMAND" =~ ^npm\ run\ lint ]] || \
-       [[ "$BASH_COMMAND" =~ ^npx\ eslint ]] || \
-       [[ "$BASH_COMMAND" =~ ^pnpm\ lint ]] || \
+    # Lint commands - ONLY direct binary runners
+    # SECURITY: Do NOT auto-approve npm run lint, pnpm lint, yarn lint
+    # because package.json scripts can be modified to run arbitrary commands
+    if [[ "$BASH_COMMAND" =~ ^npx\ eslint ]] || \
        [[ "$BASH_COMMAND" =~ ^ruff\ check ]] || \
        [[ "$BASH_COMMAND" =~ ^flake8 ]] || \
        [[ "$BASH_COMMAND" =~ ^cargo\ clippy ]] || \
@@ -106,14 +124,11 @@ if [[ "$TOOL_NAME" == "Bash" ]] && [[ -n "$BASH_COMMAND" ]]; then
         exit 0
     fi
 
-    # Build commands - safe
-    if [[ "$BASH_COMMAND" =~ ^npm\ run\ build ]] || \
-       [[ "$BASH_COMMAND" =~ ^pnpm\ build ]] || \
-       [[ "$BASH_COMMAND" =~ ^yarn\ build ]] || \
-       [[ "$BASH_COMMAND" =~ ^cargo\ build ]] || \
-       [[ "$BASH_COMMAND" =~ ^go\ build ]] || \
-       [[ "$BASH_COMMAND" =~ ^make$ ]] || \
-       [[ "$BASH_COMMAND" =~ ^make\ build ]]; then
+    # Build commands - ONLY direct binary runners
+    # SECURITY: Do NOT auto-approve npm run build, yarn build, pnpm build, make
+    # because these execute user-defined scripts from package.json/Makefile
+    if [[ "$BASH_COMMAND" =~ ^cargo\ build ]] || \
+       [[ "$BASH_COMMAND" =~ ^go\ build ]]; then
         echo '{"decision": "approve"}'
         exit 0
     fi
