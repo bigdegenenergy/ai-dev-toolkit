@@ -24,6 +24,9 @@ implement proper cryptographic signature validation for incoming webhooks.
 
 from dataclasses import dataclass
 from enum import Enum
+import hashlib
+import hmac
+import os
 from typing import Optional
 
 
@@ -33,6 +36,69 @@ class PermissionLevel(Enum):
     VIEWER = "viewer"
     MEMBER = "member"
     ADMIN = "admin"
+
+
+class WebhookVerificationError(Exception):
+    """Raised when webhook signature verification fails."""
+
+    pass
+
+
+def verify_webhook_signature(
+    payload: bytes,
+    signature: str,
+    secret: Optional[str] = None,
+) -> bool:
+    """
+    Verify the HMAC signature of a webhook payload.
+
+    SECURITY: This function implements FAIL-CLOSED behavior.
+    If WEBHOOK_SECRET is not configured, verification FAILS.
+    This prevents accidental exposure of privileged commands when
+    the secret is missing due to misconfiguration.
+
+    Args:
+        payload: The raw webhook payload bytes
+        signature: The signature from the webhook header (e.g., "sha256=...")
+        secret: Optional secret override; if None, uses WEBHOOK_SECRET env var
+
+    Returns:
+        True if signature is valid, False otherwise
+
+    Raises:
+        WebhookVerificationError: If secret is not configured (fail-closed)
+    """
+    # Get secret from environment if not provided
+    webhook_secret = secret or os.environ.get("WEBHOOK_SECRET")
+
+    # SECURITY: Fail-closed - if no secret configured, reject the request
+    # This prevents accidental exposure when secret is missing
+    if not webhook_secret:
+        raise WebhookVerificationError(
+            "WEBHOOK_SECRET environment variable is not set. "
+            "Webhook verification cannot proceed without a secret. "
+            "This is a security control - webhooks must be authenticated."
+        )
+
+    # Parse signature format (e.g., "sha256=abc123...")
+    if "=" not in signature:
+        return False
+
+    algorithm, provided_signature = signature.split("=", 1)
+
+    # Only support SHA-256 for security
+    if algorithm.lower() != "sha256":
+        return False
+
+    # Compute expected signature
+    expected_signature = hmac.new(
+        webhook_secret.encode("utf-8"),
+        payload,
+        hashlib.sha256,
+    ).hexdigest()
+
+    # Constant-time comparison to prevent timing attacks
+    return hmac.compare_digest(expected_signature, provided_signature)
 
 
 @dataclass
@@ -226,11 +292,11 @@ def _escape_xml(text: str) -> str:
 
     # Escape XML special characters
     replacements = {
-        '<': '&lt;',
-        '>': '&gt;',
-        '&': '&amp;',
-        '"': '&quot;',
-        "'": '&apos;',
+        "<": "&lt;",
+        ">": "&gt;",
+        "&": "&amp;",
+        '"': "&quot;",
+        "'": "&apos;",
     }
 
     for char, escaped in replacements.items():
@@ -259,16 +325,16 @@ def build_prompt(command: CommandMapping, args: Optional[str], context: dict) ->
         prompt_parts.append(f"Arguments: {safe_args}")
 
     if context.get("repo"):
-        safe_repo = _escape_xml(str(context['repo']))
+        safe_repo = _escape_xml(str(context["repo"]))
         prompt_parts.append(f"Repository: {safe_repo}")
 
     if context.get("branch"):
-        safe_branch = _escape_xml(str(context['branch']))
+        safe_branch = _escape_xml(str(context["branch"]))
         prompt_parts.append(f"Branch: {safe_branch}")
 
     if context.get("pr_number"):
         # pr_number should be numeric, but sanitize anyway
-        safe_pr = _escape_xml(str(context['pr_number']))
+        safe_pr = _escape_xml(str(context["pr_number"]))
         prompt_parts.append(f"PR: #{safe_pr}")
 
     return "\n".join(prompt_parts)

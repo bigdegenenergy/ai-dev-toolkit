@@ -8,7 +8,7 @@ Implementations of different approval gate types:
 - ConditionalGate: Approves based on step outputs
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 import re
 
@@ -36,7 +36,7 @@ def create_approval_request(
     Returns:
         An ApprovalRequest ready to be saved
     """
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
 
     expires_at = None
     if gate.gate_type == GateType.TIMEOUT and gate.timeout_seconds:
@@ -67,7 +67,7 @@ def check_timeout_gate(request: ApprovalRequest) -> bool:
     if request.expires_at is None:
         return False
 
-    return datetime.now() >= request.expires_at
+    return datetime.now(timezone.utc) >= request.expires_at
 
 
 def evaluate_condition(
@@ -172,8 +172,6 @@ def _resolve_expression(expr: str, context: dict[str, Any]) -> Any:
     Returns:
         The resolved value, or None if not found
     """
-    import re
-
     value = context
 
     # Handle bracket notation: steps['test-unit'].status
@@ -187,23 +185,23 @@ def _resolve_expression(expr: str, context: dict[str, Any]) -> Any:
         match = re.search(bracket_pattern, current_expr)
         if match:
             # Get everything before the bracket
-            before = current_expr[:match.start()]
-            if before and before != '.':
+            before = current_expr[: match.start()]
+            if before and before != ".":
                 # Split by dots and filter out empty parts
-                parts.extend([p for p in before.split('.') if p])
+                parts.extend([p for p in before.split(".") if p])
 
             # Add the bracketed key
             key = match.group(1) or match.group(2)
             parts.append(key)
 
             # Continue with remainder
-            current_expr = current_expr[match.end():]
-            if current_expr.startswith('.'):
+            current_expr = current_expr[match.end() :]
+            if current_expr.startswith("."):
                 current_expr = current_expr[1:]
         else:
             # No more brackets, split remaining by dots
             if current_expr:
-                parts.extend([p for p in current_expr.split('.') if p])
+                parts.extend([p for p in current_expr.split(".") if p])
             break
 
     # Navigate through the parts
@@ -233,7 +231,7 @@ def approve_request(
         Updated approval request
     """
     request.approved_by = approved_by
-    request.approved_at = datetime.now()
+    request.approved_at = datetime.now(timezone.utc)
     return request
 
 
@@ -254,7 +252,7 @@ def reject_request(
         Updated approval request
     """
     request.rejected_by = rejected_by
-    request.rejected_at = datetime.now()
+    request.rejected_at = datetime.now(timezone.utc)
     request.rejection_reason = reason
     return request
 
@@ -278,7 +276,7 @@ def format_approval_message(request: ApprovalRequest) -> str:
     ]
 
     if request.gate.gate_type == GateType.TIMEOUT and request.expires_at:
-        remaining = request.expires_at - datetime.now()
+        remaining = request.expires_at - datetime.now(timezone.utc)
         minutes = max(0, int(remaining.total_seconds() / 60))
         lines.append(f"*Auto-approves in {minutes} minutes*")
         lines.append("")

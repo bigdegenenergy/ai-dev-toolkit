@@ -8,18 +8,20 @@ Supports concurrent access and state recovery.
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 # Cross-platform file locking
 try:
     import portalocker
+
     HAS_PORTALOCKER = True
 except ImportError:
     # Fallback to platform-specific locking
     import sys
-    if sys.platform == 'win32':
+
+    if sys.platform == "win32":
         import msvcrt
     else:
         import fcntl
@@ -59,15 +61,17 @@ class StateManager:
             # Use portalocker for cross-platform locking
             flags = portalocker.LOCK_EX if exclusive else portalocker.LOCK_SH
             portalocker.lock(file_obj, flags)
-        elif os.name == 'nt':  # Windows
+        elif os.name == "nt":  # Windows
             # Use msvcrt for Windows
             import msvcrt
+
             # Lock the first byte of the file
             file_obj.seek(0)
             msvcrt.locking(file_obj.fileno(), msvcrt.LK_LOCK, 1)
         else:  # Unix-like systems
             # Use fcntl for Unix
             import fcntl
+
             lock_type = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
             fcntl.flock(file_obj.fileno(), lock_type)
 
@@ -75,13 +79,15 @@ class StateManager:
         """Release a file lock in a cross-platform way."""
         if HAS_PORTALOCKER:
             portalocker.unlock(file_obj)
-        elif os.name == 'nt':  # Windows
+        elif os.name == "nt":  # Windows
             import msvcrt
+
             # Unlock the first byte of the file
             file_obj.seek(0)
             msvcrt.locking(file_obj.fileno(), msvcrt.LK_UNLCK, 1)
         else:  # Unix-like systems
             import fcntl
+
             fcntl.flock(file_obj.fileno(), fcntl.LOCK_UN)
 
     def _sanitize_workflow_id(self, workflow_id: str) -> str:
@@ -102,7 +108,8 @@ class StateManager:
 
         # Validate that it contains only alphanumeric, hyphens, and underscores
         import re
-        if not re.match(r'^[\w\-]+$', safe_id):
+
+        if not re.match(r"^[\w\-]+$", safe_id):
             raise ValueError(
                 f"Invalid workflow_id: {workflow_id}. "
                 "Only alphanumeric characters, hyphens, and underscores are allowed."
@@ -132,10 +139,19 @@ class StateManager:
         return dt.isoformat()
 
     def _deserialize_datetime(self, s: Optional[str]) -> Optional[datetime]:
-        """Convert ISO format string to datetime."""
+        """
+        Convert ISO format string to timezone-aware UTC datetime.
+
+        Handles both naive and aware datetimes for backward compatibility.
+        Naive datetimes are assumed to be UTC.
+        """
         if s is None:
             return None
-        return datetime.fromisoformat(s)
+        dt = datetime.fromisoformat(s)
+        # If the datetime is naive (no timezone info), assume it's UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
 
     def save_state(self, state: WorkflowState) -> None:
         """
@@ -148,7 +164,7 @@ class StateManager:
         lock_file = self._lock_file(state.workflow_id)
 
         # Ensure updated_at is current
-        state.updated_at = datetime.now()
+        state.updated_at = datetime.now(timezone.utc)
 
         # Serialize state to JSON
         data = {
@@ -178,7 +194,7 @@ class StateManager:
         }
 
         # Write with file locking for concurrent access
-        with open(lock_file, "w") as lf:
+        with open(lock_file, "a") as lf:
             self._acquire_lock(lf, exclusive=True)
             try:
                 with open(state_file, "w") as f:
@@ -203,7 +219,7 @@ class StateManager:
 
         lock_file = self._lock_file(workflow_id)
 
-        with open(lock_file, "w") as lf:
+        with open(lock_file, "a") as lf:
             self._acquire_lock(lf, exclusive=False)
             try:
                 with open(state_file) as f:
@@ -326,7 +342,7 @@ class StateManager:
         }
 
         # Write with file locking for concurrent access
-        with open(lock_file, "w") as lf:
+        with open(lock_file, "a") as lf:
             self._acquire_lock(lf, exclusive=True)
             try:
                 with open(approval_file, "w") as f:
